@@ -4,6 +4,21 @@
 
 pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
 
+## How to Run
+
+Two workflows must be running:
+
+- **LexCom Frontend** — `PORT=5173 BASE_PATH=/ pnpm --filter @workspace/lexcom run dev` → http://localhost:5173
+- **API Server** — `PORT=8080 pnpm --filter @workspace/api-server run dev` → http://localhost:8080
+
+The API server builds with esbuild on every `dev` start, applies the Drizzle schema to the database, and then listens. The frontend is a Vite dev server that hot-reloads.
+
+### Required environment (auto-provisioned on Replit)
+- `DATABASE_URL` — injected by Replit's managed PostgreSQL
+- `REPL_ID` — injected by Replit runtime
+- `AI_INTEGRATIONS_OPENAI_BASE_URL` / `AI_INTEGRATIONS_OPENAI_API_KEY` — provisioned via Replit AI Integrations (OpenAI)
+- `SESSION_SECRET` — stored as a Replit Secret
+
 ## Stack
 
 - **Monorepo tool**: pnpm workspaces
