@@ -6,10 +6,10 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ## How to Run
 
-Two workflows must be running:
+Two artifact-managed workflows must be running:
 
-- **LexCom Frontend** — `PORT=5173 BASE_PATH=/ pnpm --filter @workspace/lexcom run dev` → http://localhost:5173
-- **API Server** — `PORT=8080 pnpm --filter @workspace/api-server run dev` → http://localhost:8080
+- **artifacts/lexcom: web** — Vite dev server for the LexCom frontend (port injected by artifact system)
+- **artifacts/api-server: API Server** — Express API server (port injected by artifact system)
 
 The API server builds with esbuild on every `dev` start, applies the Drizzle schema to the database, and then listens. The frontend is a Vite dev server that hot-reloads.
 

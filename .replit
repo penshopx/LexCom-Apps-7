@@ -1,6 +1,9 @@
 modules = ["nodejs-20", "web", "bash", "postgresql-16"]
 
 [[artifacts]]
+id = "artifacts/lexcom"
+
+[[artifacts]]
 id = "artifacts/api-server"
 
 [[artifacts]]
@@ -28,11 +31,11 @@ args = "test"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "LexCom Frontend"
+args = "artifacts/lexcom: web"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "API Server"
+args = "artifacts/api-server: API Server"
 
 [[workflows.workflow]]
 name = "test"
@@ -44,30 +47,6 @@ args = "pnpm test"
 
 [workflows.workflow.metadata]
 isValidation = true
-
-[[workflows.workflow]]
-name = "LexCom Frontend"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "PORT=5173 BASE_PATH=/ pnpm --filter @workspace/lexcom run dev"
-waitForPort = 5173
-
-[workflows.workflow.metadata]
-outputType = "webview"
-
-[[workflows.workflow]]
-name = "API Server"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "PORT=8080 pnpm --filter @workspace/api-server run dev"
-waitForPort = 8080
-
-[workflows.workflow.metadata]
-outputType = "console"
 
 [agent]
 stack = "PNPM_WORKSPACE"
