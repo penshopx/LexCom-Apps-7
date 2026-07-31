@@ -2,8 +2,23 @@ import { Router, type IRouter } from "express";
 import { db, documentsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { batchProcess, isRateLimitError } from "@workspace/integrations-openai-ai-server/batch";
 
 const router: IRouter = Router();
+
+/**
+ * Wraps a single OpenAI call with automatic retry + exponential backoff on
+ * rate-limit errors (429). Uses the shared batchProcess utility so the retry
+ * behaviour stays consistent across all agents.
+ */
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  const [result] = await batchProcess(
+    [null as null],
+    () => fn(),
+    { concurrency: 1, retries: 5, minTimeout: 1000, maxTimeout: 30000 },
+  );
+  return result!;
+}
 
 const DOCUMENT_SYSTEM_PROMPTS: Record<string, string> = {
   gugatan: "Anda adalah pengacara Indonesia yang ahli membuat surat gugatan. Buat dokumen gugatan yang formal, lengkap, dan sesuai format pengadilan Indonesia.",
@@ -110,29 +125,57 @@ Buat dokumen yang lengkap dengan format profesional, termasuk:
 
     let fullContent = "";
 
-    const stream = await openai.chat.completions.create({
-      model: "gpt-5.2",
-      max_completion_tokens: 8192,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      stream: true,
-    });
+    // Stream creation is retried on rate limit before any bytes are sent to
+    // the client, so the SSE channel stays clean if the first attempt hits 429.
+    let stream;
+    try {
+      stream = await withRetry(() =>
+        openai.chat.completions.create({
+          model: "gpt-5.2",
+          max_completion_tokens: 8192,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          stream: true,
+        }),
+      );
+    } catch (err) {
+      req.log.error({ err }, "Document generation stream failed");
+      const message = isRateLimitError(err)
+        ? "Batas permintaan AI tercapai. Silakan coba lagi dalam beberapa detik."
+        : "Gagal memulai pembuatan dokumen. Silakan coba lagi.";
+      res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
+      res.end();
+      return;
+    }
 
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content;
-      if (content) {
-        fullContent += content;
-        res.write(`data: ${JSON.stringify({ content })}\n\n`);
+    try {
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content;
+        if (content) {
+          fullContent += content;
+          res.write(`data: ${JSON.stringify({ content })}\n\n`);
+        }
       }
+    } catch (err) {
+      req.log.error({ err }, "Document generation stream interrupted");
+      const message = isRateLimitError(err)
+        ? "Batas permintaan AI tercapai saat pembuatan dokumen. Silakan coba lagi."
+        : "Koneksi terputus saat pembuatan dokumen. Silakan coba lagi.";
+      res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
+      res.end();
+      return;
     }
 
     res.write(`data: ${JSON.stringify({ done: true, fullContent })}\n\n`);
     res.end();
   } catch (err) {
     req.log.error({ err }, "Failed to generate document");
-    res.write(`data: ${JSON.stringify({ error: "Internal server error" })}\n\n`);
+    const message = isRateLimitError(err)
+      ? "Batas permintaan AI tercapai. Silakan coba lagi dalam beberapa detik."
+      : "Internal server error";
+    res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
     res.end();
   }
 });

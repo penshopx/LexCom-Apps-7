@@ -1,9 +1,24 @@
 import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { batchProcess, isRateLimitError } from "@workspace/integrations-openai-ai-server/batch";
 import { db, conversations, messages } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
 
 const router: IRouter = Router();
+
+/**
+ * Wraps a single OpenAI call with automatic retry + exponential backoff on
+ * rate-limit errors (429). Uses the shared batchProcess utility so the retry
+ * behaviour stays consistent across all agents.
+ */
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  const [result] = await batchProcess(
+    [null as null],
+    () => fn(),
+    { concurrency: 1, retries: 5, minTimeout: 1000, maxTimeout: 30000 },
+  );
+  return result!;
+}
 
 interface AgentMeta {
   name: string;
@@ -203,6 +218,15 @@ router.post("/agentic/conversations/:id/chat", async (req, res) => {
       res.write(`data: ${JSON.stringify(data)}\n\n`);
     };
 
+    /** Emit a user-visible error event over SSE and close the stream. */
+    const emitStreamError = (err: unknown) => {
+      const message = isRateLimitError(err)
+        ? "Batas permintaan AI tercapai. Silakan coba lagi dalam beberapa detik."
+        : "Terjadi kesalahan saat memproses respons. Silakan coba lagi.";
+      emit({ type: "error", message });
+      res.end();
+    };
+
     emit({ type: "orchestrating" });
 
     let selectedAgents: string[];
@@ -214,17 +238,20 @@ router.post("/agentic/conversations/:id/chat", async (req, res) => {
       mode = selectedAgents.length === 1 ? "single" : "multi";
       reasoning = `Mode manual — agen dipilih oleh pengguna: ${selectedAgents.map((a) => AGENT_META[a]?.name).join(", ")}`;
     } else {
-      const orchestratorResult = await openai.chat.completions.create({
-        model: "gpt-5.2",
-        messages: [
-          { role: "system", content: ORCHESTRATOR_SYSTEM },
-          ...chatHistory,
-          { role: "user", content },
-        ],
-        tools: ORCHESTRATE_TOOL,
-        tool_choice: "required",
-        max_completion_tokens: 512,
-      });
+      // Non-streaming orchestrator call — retried automatically on rate limit.
+      const orchestratorResult = await withRetry(() =>
+        openai.chat.completions.create({
+          model: "gpt-5.2",
+          messages: [
+            { role: "system", content: ORCHESTRATOR_SYSTEM },
+            ...chatHistory,
+            { role: "user", content },
+          ],
+          tools: ORCHESTRATE_TOOL,
+          tool_choice: "required",
+          max_completion_tokens: 512,
+        }),
+      );
 
       const toolCall = orchestratorResult.choices[0]?.message?.tool_calls?.[0];
       if (!toolCall) {
@@ -271,19 +298,35 @@ router.post("/agentic/conversations/:id/chat", async (req, res) => {
       ];
 
       let agentContent = "";
-      const agentStream = await openai.chat.completions.create({
-        model: "gpt-5.2",
-        messages: agentMessages,
-        max_completion_tokens: 3000,
-        stream: true,
-      });
 
-      for await (const chunk of agentStream) {
-        const delta = chunk.choices[0]?.delta?.content;
-        if (delta) {
-          agentContent += delta;
-          emit({ type: "agent_chunk", agent: agentKey, content: delta });
+      let agentStream;
+      try {
+        agentStream = await withRetry(() =>
+          openai.chat.completions.create({
+            model: "gpt-5.2",
+            messages: agentMessages,
+            max_completion_tokens: 3000,
+            stream: true,
+          }),
+        );
+      } catch (err) {
+        req.log.error({ err, agentKey }, "Agentic agent stream failed");
+        emitStreamError(err);
+        return;
+      }
+
+      try {
+        for await (const chunk of agentStream) {
+          const delta = chunk.choices[0]?.delta?.content;
+          if (delta) {
+            agentContent += delta;
+            emit({ type: "agent_chunk", agent: agentKey, content: delta });
+          }
         }
+      } catch (err) {
+        req.log.error({ err, agentKey }, "Agentic agent stream interrupted");
+        emitStreamError(err);
+        return;
       }
 
       agentResponses.push({ agent: agentKey, content: agentContent });
@@ -302,25 +345,40 @@ router.post("/agentic/conversations/:id/chat", async (req, res) => {
         })
         .join("\n\n");
 
-      const synthStream = await openai.chat.completions.create({
-        model: "gpt-5.2",
-        messages: [
-          { role: "system", content: SYNTHESIS_SYSTEM },
-          {
-            role: "user",
-            content: `Pertanyaan pengguna:\n${content}\n\n---\n\nPerspektif dari agent spesialis:\n\n${agentSummaries}\n\n---\n\nBuat sintesis komprehensif yang menggabungkan semua perspektif di atas.`,
-          },
-        ],
-        max_completion_tokens: 4096,
-        stream: true,
-      });
+      let synthStream;
+      try {
+        synthStream = await withRetry(() =>
+          openai.chat.completions.create({
+            model: "gpt-5.2",
+            messages: [
+              { role: "system", content: SYNTHESIS_SYSTEM },
+              {
+                role: "user",
+                content: `Pertanyaan pengguna:\n${content}\n\n---\n\nPerspektif dari agent spesialis:\n\n${agentSummaries}\n\n---\n\nBuat sintesis komprehensif yang menggabungkan semua perspektif di atas.`,
+              },
+            ],
+            max_completion_tokens: 4096,
+            stream: true,
+          }),
+        );
+      } catch (err) {
+        req.log.error({ err }, "Agentic synthesis stream failed");
+        emitStreamError(err);
+        return;
+      }
 
-      for await (const chunk of synthStream) {
-        const delta = chunk.choices[0]?.delta?.content;
-        if (delta) {
-          synthesisContent += delta;
-          emit({ type: "synthesis_chunk", content: delta });
+      try {
+        for await (const chunk of synthStream) {
+          const delta = chunk.choices[0]?.delta?.content;
+          if (delta) {
+            synthesisContent += delta;
+            emit({ type: "synthesis_chunk", content: delta });
+          }
         }
+      } catch (err) {
+        req.log.error({ err }, "Agentic synthesis stream interrupted");
+        emitStreamError(err);
+        return;
       }
 
       emit({ type: "synthesis_done" });
@@ -342,7 +400,10 @@ router.post("/agentic/conversations/:id/chat", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Agentic chat error");
     try {
-      res.write(`data: ${JSON.stringify({ type: "error", message: "Terjadi kesalahan, silakan coba lagi" })}\n\n`);
+      const message = isRateLimitError(err)
+        ? "Batas permintaan AI tercapai. Silakan coba lagi dalam beberapa detik."
+        : "Terjadi kesalahan, silakan coba lagi";
+      res.write(`data: ${JSON.stringify({ type: "error", message })}\n\n`);
       res.end();
     } catch {}
   }

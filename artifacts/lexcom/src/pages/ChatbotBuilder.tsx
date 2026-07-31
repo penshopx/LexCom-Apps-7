@@ -113,7 +113,7 @@ Selalu jawab dalam Bahasa Indonesia. Jika pertanyaan di luar bidang hukum, arahk
         body: JSON.stringify({ content: prompt }),
       });
 
-      if (!res.body) throw new Error();
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let buf = "";
@@ -132,11 +132,22 @@ Selalu jawab dalam Bahasa Indonesia. Jika pertanyaan di luar bidang hukum, arahk
             if (ev.type === "content" && ev.content) {
               setMessages(prev => prev.map(m => m.id === botMsgId ? { ...m, content: m.content + ev.content } : m));
             }
+            if (ev.type === "error") {
+              setMessages(prev => prev.map(m =>
+                m.id === botMsgId ? { ...m, content: `❌ ${ev.message || "Terjadi kesalahan. Silakan coba lagi."}` } : m
+              ));
+              return;
+            }
           } catch {}
         }
       }
-    } catch {}
-    setIsTyping(false);
+    } catch {
+      setMessages(prev => prev.map(m =>
+        m.id === botMsgId ? { ...m, content: "❌ Gagal mendapatkan respons. Silakan coba lagi." } : m
+      ));
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   const toggleKB = (key: string) => {

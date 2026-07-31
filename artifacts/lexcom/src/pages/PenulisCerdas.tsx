@@ -71,7 +71,7 @@ export default function PenulisCerdas() {
       credentials: "include",
       body: JSON.stringify({ content: prompt }),
     });
-    if (!res.body) { onDone(); return; }
+    if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
     const reader = res.body.getReader();
     const dec = new TextDecoder();
     let buf = "";
@@ -84,7 +84,14 @@ export default function PenulisCerdas() {
       for (const line of lines) {
         const t = line.startsWith("data: ") ? line.slice(6).trim() : line.trim();
         if (!t || t === "[DONE]") continue;
-        try { const ev = JSON.parse(t); if (ev.type === "content" && ev.content) onChunk(ev.content); } catch {}
+        let ev: Record<string, unknown> | null = null;
+        try { ev = JSON.parse(t) as Record<string, unknown>; } catch { /* ignore malformed SSE lines */ }
+        if (!ev) continue;
+        if (ev.type === "content" && ev.content) onChunk(ev.content as string);
+        if (ev.type === "error") {
+          // Re-throw so the outer try/catch in the caller clears loading state.
+          throw new Error((ev.message as string) ?? "Terjadi kesalahan. Silakan coba lagi.");
+        }
       }
     }
     onDone();

@@ -134,7 +134,7 @@ export default function TelaahDokumen() {
         credentials: "include",
         body: JSON.stringify({ content: prompt }),
       });
-      if (!res.body) throw new Error("No body");
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let buf = "";
@@ -153,6 +153,12 @@ export default function TelaahDokumen() {
               setAgentResults(prev => prev.map((r, i) =>
                 i === idx ? { ...r, content: r.content + ev.content } : r
               ));
+            }
+            if (ev.type === "error") {
+              setAgentResults(prev => prev.map((r, i) =>
+                i === idx ? { ...r, done: true, error: true, content: r.content || (ev.message as string ?? "Terjadi kesalahan. Silakan coba lagi.") } : r
+              ));
+              return;
             }
           } catch {}
         }

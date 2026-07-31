@@ -134,6 +134,11 @@ export default function Documents() {
               if (data.content) {
                 setGeneratedContent(prev => prev + data.content);
               }
+              if (data.error) {
+                toast({ title: "Gagal Membuat Dokumen", description: data.error, variant: "destructive" });
+                setIsGenerating(false);
+                return;
+              }
               if (data.done) {
                 setIsGenerating(false);
               }

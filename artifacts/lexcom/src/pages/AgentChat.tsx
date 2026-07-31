@@ -348,6 +348,10 @@ export default function AgentChat() {
         body: JSON.stringify({ content: userMsg.content }),
       });
 
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
@@ -365,12 +369,19 @@ export default function AgentChat() {
               if (data.content) {
                 setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: m.content + data.content } : m));
               }
+              if (data.error) {
+                setMessages(prev => prev.map(m =>
+                  m.id === aiMsgId ? { ...m, content: `❌ ${data.error}` } : m
+                ));
+                return;
+              }
             } catch {}
           }
         }
       }
     } catch {
-      toast({ title: "Gagal mengirim pesan", variant: "destructive" });
+      toast({ title: "Gagal mengirim pesan", description: "Silakan coba lagi.", variant: "destructive" });
+      setMessages(prev => prev.filter(m => m.id !== aiMsgId));
     } finally {
       setIsTyping(false);
     }

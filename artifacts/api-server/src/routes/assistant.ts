@@ -1,9 +1,24 @@
 import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { batchProcess, isRateLimitError } from "@workspace/integrations-openai-ai-server/batch";
 import { db, conversations, messages } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
 
 const router: IRouter = Router();
+
+/**
+ * Wraps a single OpenAI call with automatic retry + exponential backoff on
+ * rate-limit errors (429). Uses the shared batchProcess utility so the retry
+ * behaviour stays consistent across all agents.
+ */
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  const [result] = await batchProcess(
+    [null as null],
+    () => fn(),
+    { concurrency: 1, retries: 5, minTimeout: 1000, maxTimeout: 30000 },
+  );
+  return result!;
+}
 
 const PLATFORM_KNOWLEDGE = `
 ## LexCom — Platform LegalTech Indonesia
@@ -371,6 +386,15 @@ router.post("/assistant/conversations/:id/chat", async (req, res) => {
       res.write(`data: ${JSON.stringify(data)}\n\n`);
     };
 
+    /** Emit a user-visible error event over SSE and close the stream. */
+    const sendStreamError = (err: unknown) => {
+      const message = isRateLimitError(err)
+        ? "Batas permintaan AI tercapai. Silakan coba lagi dalam beberapa detik."
+        : "Terjadi kesalahan saat memproses respons. Silakan coba lagi.";
+      sendEvent({ type: "error", message });
+      res.end();
+    };
+
     sendEvent({ type: "thinking", agent: "orchestrator" });
 
     const orchestratorMessages = [
@@ -379,13 +403,16 @@ router.post("/assistant/conversations/:id/chat", async (req, res) => {
       { role: "user" as const, content },
     ];
 
-    const orchestratorResult = await openai.chat.completions.create({
-      model: "gpt-5.2",
-      messages: orchestratorMessages,
-      tools: ORCHESTRATOR_TOOLS,
-      tool_choice: "auto",
-      max_completion_tokens: 1024,
-    });
+    // Non-streaming orchestrator call — retried automatically on rate limit.
+    const orchestratorResult = await withRetry(() =>
+      openai.chat.completions.create({
+        model: "gpt-5.2",
+        messages: orchestratorMessages,
+        tools: ORCHESTRATOR_TOOLS,
+        tool_choice: "auto",
+        max_completion_tokens: 1024,
+      }),
+    );
 
     const orchestratorMessage = orchestratorResult.choices[0]?.message;
     const toolCall = orchestratorMessage?.tool_calls?.[0];
@@ -396,24 +423,39 @@ router.post("/assistant/conversations/:id/chat", async (req, res) => {
       sendEvent({ type: "action", action: "answering" });
       const fallbackContent = orchestratorMessage?.content?.trim();
 
-      const fallbackStream = await openai.chat.completions.create({
-        model: "gpt-5.2",
-        messages: [
-          { role: "system" as const, content: `${ORCHESTRATOR_SYSTEM}\n\nJawab secara langsung dan informatif dalam Bahasa Indonesia. Gunakan format markdown.` },
-          ...chatHistory,
-          { role: "user" as const, content },
-          ...(fallbackContent ? [{ role: "assistant" as const, content: fallbackContent }] : []),
-        ],
-        max_completion_tokens: 2048,
-        stream: true,
-      });
+      let fallbackStream;
+      try {
+        fallbackStream = await withRetry(() =>
+          openai.chat.completions.create({
+            model: "gpt-5.2",
+            messages: [
+              { role: "system" as const, content: `${ORCHESTRATOR_SYSTEM}\n\nJawab secara langsung dan informatif dalam Bahasa Indonesia. Gunakan format markdown.` },
+              ...chatHistory,
+              { role: "user" as const, content },
+              ...(fallbackContent ? [{ role: "assistant" as const, content: fallbackContent }] : []),
+            ],
+            max_completion_tokens: 2048,
+            stream: true,
+          }),
+        );
+      } catch (err) {
+        req.log.error({ err }, "LexBot fallback stream failed");
+        sendStreamError(err);
+        return;
+      }
 
-      for await (const chunk of fallbackStream) {
-        const delta = chunk.choices[0]?.delta?.content;
-        if (delta) {
-          finalResponse += delta;
-          sendEvent({ type: "content", content: delta });
+      try {
+        for await (const chunk of fallbackStream) {
+          const delta = chunk.choices[0]?.delta?.content;
+          if (delta) {
+            finalResponse += delta;
+            sendEvent({ type: "content", content: delta });
+          }
         }
+      } catch (err) {
+        req.log.error({ err }, "LexBot fallback stream interrupted");
+        sendStreamError(err);
+        return;
       }
 
       sendEvent({ type: "done", metadata: { action: "direct_answer" } });
@@ -446,28 +488,43 @@ router.post("/assistant/conversations/:id/chat", async (req, res) => {
       const { feature, response } = fnArgs as { feature: string; response: string };
       sendEvent({ type: "action", action: "guide", feature });
 
-      const stream = await openai.chat.completions.create({
-        model: "gpt-5.2",
-        messages: [
-          {
-            role: "system",
-            content: `Anda adalah LexBot pemandu LexCom. Perluas dan sempurnakan panduan berikut menjadi respons yang lebih kaya, lebih detail, dan mudah diikuti.\n\n${PLATFORM_KNOWLEDGE}`,
-          },
-          {
-            role: "user",
-            content: `Panduan tentang "${feature}":\n\n${response}\n\nBerikan panduan yang lebih lengkap, terstruktur, dan ramah pengguna dalam format markdown.`,
-          },
-        ],
-        max_completion_tokens: 2048,
-        stream: true,
-      });
+      let stream;
+      try {
+        stream = await withRetry(() =>
+          openai.chat.completions.create({
+            model: "gpt-5.2",
+            messages: [
+              {
+                role: "system",
+                content: `Anda adalah LexBot pemandu LexCom. Perluas dan sempurnakan panduan berikut menjadi respons yang lebih kaya, lebih detail, dan mudah diikuti.\n\n${PLATFORM_KNOWLEDGE}`,
+              },
+              {
+                role: "user",
+                content: `Panduan tentang "${feature}":\n\n${response}\n\nBerikan panduan yang lebih lengkap, terstruktur, dan ramah pengguna dalam format markdown.`,
+              },
+            ],
+            max_completion_tokens: 2048,
+            stream: true,
+          }),
+        );
+      } catch (err) {
+        req.log.error({ err }, "LexBot platform guide stream failed");
+        sendStreamError(err);
+        return;
+      }
 
-      for await (const chunk of stream) {
-        const delta = chunk.choices[0]?.delta?.content;
-        if (delta) {
-          finalResponse += delta;
-          sendEvent({ type: "content", content: delta });
+      try {
+        for await (const chunk of stream) {
+          const delta = chunk.choices[0]?.delta?.content;
+          if (delta) {
+            finalResponse += delta;
+            sendEvent({ type: "content", content: delta });
+          }
         }
+      } catch (err) {
+        req.log.error({ err }, "LexBot platform guide stream interrupted");
+        sendStreamError(err);
+        return;
       }
       sendEvent({ type: "done", metadata: { action: fnName, feature } });
 
@@ -489,19 +546,34 @@ router.post("/assistant/conversations/:id/chat", async (req, res) => {
         { role: "user" as const, content: refined_query },
       ];
 
-      const specialistStream = await openai.chat.completions.create({
-        model: "gpt-5.2",
-        messages: specialistMessages,
-        max_completion_tokens: 4096,
-        stream: true,
-      });
+      let specialistStream;
+      try {
+        specialistStream = await withRetry(() =>
+          openai.chat.completions.create({
+            model: "gpt-5.2",
+            messages: specialistMessages,
+            max_completion_tokens: 4096,
+            stream: true,
+          }),
+        );
+      } catch (err) {
+        req.log.error({ err }, "LexBot specialist stream failed");
+        sendStreamError(err);
+        return;
+      }
 
-      for await (const chunk of specialistStream) {
-        const delta = chunk.choices[0]?.delta?.content;
-        if (delta) {
-          finalResponse += delta;
-          sendEvent({ type: "content", content: delta });
+      try {
+        for await (const chunk of specialistStream) {
+          const delta = chunk.choices[0]?.delta?.content;
+          if (delta) {
+            finalResponse += delta;
+            sendEvent({ type: "content", content: delta });
+          }
         }
+      } catch (err) {
+        req.log.error({ err }, "LexBot specialist stream interrupted");
+        sendStreamError(err);
+        return;
       }
       sendEvent({ type: "done", metadata: { action: fnName, specialist, specialistName } });
 
@@ -509,28 +581,43 @@ router.post("/assistant/conversations/:id/chat", async (req, res) => {
       const { title, response } = fnArgs as { title: string; response: string };
       sendEvent({ type: "action", action: "planning", title });
 
-      const stream = await openai.chat.completions.create({
-        model: "gpt-5.2",
-        messages: [
-          {
-            role: "system",
-            content: `Anda adalah LexBot, asisten LexCom yang membuat rencana tindakan terstruktur. Kembangkan rencana berikut menjadi lebih detail, praktis, dan actionable.\n\n${PLATFORM_KNOWLEDGE}`,
-          },
-          {
-            role: "user",
-            content: `Buat rencana tindakan untuk: "${title}"\n\nDraft awal:\n${response}\n\nKembangkan dengan langkah-langkah konkret, estimasi waktu, dan sumber daya yang diperlukan.`,
-          },
-        ],
-        max_completion_tokens: 2048,
-        stream: true,
-      });
+      let stream;
+      try {
+        stream = await withRetry(() =>
+          openai.chat.completions.create({
+            model: "gpt-5.2",
+            messages: [
+              {
+                role: "system",
+                content: `Anda adalah LexBot, asisten LexCom yang membuat rencana tindakan terstruktur. Kembangkan rencana berikut menjadi lebih detail, praktis, dan actionable.\n\n${PLATFORM_KNOWLEDGE}`,
+              },
+              {
+                role: "user",
+                content: `Buat rencana tindakan untuk: "${title}"\n\nDraft awal:\n${response}\n\nKembangkan dengan langkah-langkah konkret, estimasi waktu, dan sumber daya yang diperlukan.`,
+              },
+            ],
+            max_completion_tokens: 2048,
+            stream: true,
+          }),
+        );
+      } catch (err) {
+        req.log.error({ err }, "LexBot action plan stream failed");
+        sendStreamError(err);
+        return;
+      }
 
-      for await (const chunk of stream) {
-        const delta = chunk.choices[0]?.delta?.content;
-        if (delta) {
-          finalResponse += delta;
-          sendEvent({ type: "content", content: delta });
+      try {
+        for await (const chunk of stream) {
+          const delta = chunk.choices[0]?.delta?.content;
+          if (delta) {
+            finalResponse += delta;
+            sendEvent({ type: "content", content: delta });
+          }
         }
+      } catch (err) {
+        req.log.error({ err }, "LexBot action plan stream interrupted");
+        sendStreamError(err);
+        return;
       }
       sendEvent({ type: "done", metadata: { action: fnName, title } });
 
@@ -538,25 +625,40 @@ router.post("/assistant/conversations/:id/chat", async (req, res) => {
       const { response } = fnArgs as { response: string };
       sendEvent({ type: "action", action: "answering" });
 
-      const stream = await openai.chat.completions.create({
-        model: "gpt-5.2",
-        messages: [
-          { role: "system" as const, content: `${ORCHESTRATOR_SYSTEM}\n\nJawablah dengan langsung dan informatif. Gunakan format markdown yang bersih.` },
-          ...chatHistory,
-          { role: "user" as const, content },
-          { role: "assistant" as const, content: response },
-          { role: "user" as const, content: "Kembangkan jawaban di atas menjadi lebih lengkap dan informatif." },
-        ],
-        max_completion_tokens: 2048,
-        stream: true,
-      });
+      let stream;
+      try {
+        stream = await withRetry(() =>
+          openai.chat.completions.create({
+            model: "gpt-5.2",
+            messages: [
+              { role: "system" as const, content: `${ORCHESTRATOR_SYSTEM}\n\nJawablah dengan langsung dan informatif. Gunakan format markdown yang bersih.` },
+              ...chatHistory,
+              { role: "user" as const, content },
+              { role: "assistant" as const, content: response },
+              { role: "user" as const, content: "Kembangkan jawaban di atas menjadi lebih lengkap dan informatif." },
+            ],
+            max_completion_tokens: 2048,
+            stream: true,
+          }),
+        );
+      } catch (err) {
+        req.log.error({ err }, "LexBot direct answer stream failed");
+        sendStreamError(err);
+        return;
+      }
 
-      for await (const chunk of stream) {
-        const delta = chunk.choices[0]?.delta?.content;
-        if (delta) {
-          finalResponse += delta;
-          sendEvent({ type: "content", content: delta });
+      try {
+        for await (const chunk of stream) {
+          const delta = chunk.choices[0]?.delta?.content;
+          if (delta) {
+            finalResponse += delta;
+            sendEvent({ type: "content", content: delta });
+          }
         }
+      } catch (err) {
+        req.log.error({ err }, "LexBot direct answer stream interrupted");
+        sendStreamError(err);
+        return;
       }
       sendEvent({ type: "done", metadata: { action: fnName } });
     }
@@ -573,7 +675,10 @@ router.post("/assistant/conversations/:id/chat", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "LexBot assistant error");
     try {
-      res.write(`data: ${JSON.stringify({ type: "error", message: "Terjadi kesalahan, silakan coba lagi" })}\n\n`);
+      const message = isRateLimitError(err)
+        ? "Batas permintaan AI tercapai. Silakan coba lagi dalam beberapa detik."
+        : "Terjadi kesalahan, silakan coba lagi";
+      res.write(`data: ${JSON.stringify({ type: "error", message })}\n\n`);
       res.end();
     } catch {}
   }

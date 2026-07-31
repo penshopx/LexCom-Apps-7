@@ -66,7 +66,7 @@ export default function RisetAI() {
         credentials: "include",
         body: JSON.stringify({ content: prompt }),
       });
-      if (!res.body) throw new Error("No body");
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let buf = "";
@@ -85,6 +85,12 @@ export default function RisetAI() {
               setAgentResults(prev => prev.map((r, i) =>
                 i === idx ? { ...r, content: r.content + ev.content } : r
               ));
+            }
+            if (ev.type === "error") {
+              setAgentResults(prev => prev.map((r, i) =>
+                i === idx ? { ...r, done: true, error: true } : r
+              ));
+              return;
             }
           } catch {}
         }
@@ -122,7 +128,7 @@ export default function RisetAI() {
         credentials: "include",
         body: JSON.stringify({ content: prompt }),
       });
-      if (!res.body) throw new Error("No body");
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let buf = "";
@@ -140,9 +146,17 @@ export default function RisetAI() {
             if (ev.type === "content" && ev.content) {
               setSearchResult(prev => prev + ev.content);
             }
+            if (ev.type === "error") {
+              setSearchResult(ev.message as string ?? "Terjadi kesalahan. Silakan coba lagi.");
+              setSearchDone(true);
+              return;
+            }
           } catch {}
         }
       }
+      setSearchDone(true);
+    } catch {
+      setSearchResult("Gagal mendapatkan hasil. Silakan coba lagi.");
       setSearchDone(true);
     } finally {
       setIsProcessing(false);

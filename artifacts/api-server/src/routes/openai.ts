@@ -2,12 +2,27 @@ import { Router, type IRouter } from "express";
 import { db, conversations, messages } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { batchProcess, isRateLimitError } from "@workspace/integrations-openai-ai-server/batch";
 import {
   CreateOpenaiConversationBody,
   SendOpenaiMessageBody,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
+
+/**
+ * Wraps a single OpenAI call with automatic retry + exponential backoff on
+ * rate-limit errors (429). Uses the shared batchProcess utility so the retry
+ * behaviour stays consistent across all agents.
+ */
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  const [result] = await batchProcess(
+    [null as null],
+    () => fn(),
+    { concurrency: 1, retries: 5, minTimeout: 1000, maxTimeout: 30000 },
+  );
+  return result!;
+}
 
 const AGENT_SYSTEM_PROMPTS: Record<string, string> = {
   corporate: `Anda adalah Corporate Lawyer AI, seorang pengacara korporasi Indonesia yang berpengalaman. 
@@ -434,19 +449,44 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
 
     let fullResponse = "";
 
-    const stream = await openai.chat.completions.create({
-      model: "gpt-5.2",
-      max_completion_tokens: 8192,
-      messages: chatMessages,
-      stream: true,
-    });
+    // Stream creation is retried automatically on rate limit before any bytes
+    // are sent to the client, so the SSE channel stays clean on 429.
+    let stream;
+    try {
+      stream = await withRetry(() =>
+        openai.chat.completions.create({
+          model: "gpt-5.2",
+          max_completion_tokens: 8192,
+          messages: chatMessages,
+          stream: true,
+        }),
+      );
+    } catch (err) {
+      req.log.error({ err }, "Agent stream creation failed");
+      const message = isRateLimitError(err)
+        ? "Batas permintaan AI tercapai. Silakan coba lagi dalam beberapa detik."
+        : "Gagal terhubung ke AI. Silakan coba lagi.";
+      res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
+      res.end();
+      return;
+    }
 
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content;
-      if (content) {
-        fullResponse += content;
-        res.write(`data: ${JSON.stringify({ content })}\n\n`);
+    try {
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content;
+        if (content) {
+          fullResponse += content;
+          res.write(`data: ${JSON.stringify({ content })}\n\n`);
+        }
       }
+    } catch (err) {
+      req.log.error({ err }, "Agent stream interrupted");
+      const message = isRateLimitError(err)
+        ? "Batas permintaan AI tercapai saat streaming. Silakan coba lagi."
+        : "Koneksi terputus. Silakan coba lagi.";
+      res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
+      res.end();
+      return;
     }
 
     await db.insert(messages).values({
@@ -459,7 +499,10 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
     res.end();
   } catch (err) {
     req.log.error({ err }, "Failed to send message");
-    res.write(`data: ${JSON.stringify({ error: "Internal server error" })}\n\n`);
+    const message = isRateLimitError(err)
+      ? "Batas permintaan AI tercapai. Silakan coba lagi dalam beberapa detik."
+      : "Internal server error";
+    res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
     res.end();
   }
 });

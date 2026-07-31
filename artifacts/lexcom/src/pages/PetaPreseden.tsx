@@ -119,7 +119,7 @@ export default function PetaPreseden() {
         credentials: "include",
         body: JSON.stringify({ content: prompt }),
       });
-      if (!res.body) throw new Error();
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let buf = "";
@@ -136,6 +136,10 @@ export default function PetaPreseden() {
             const ev = JSON.parse(t);
             if (ev.type === "content" && ev.content) {
               setResults(prev => prev.map((r, i) => i === idx ? { ...r, content: r.content + ev.content } : r));
+            }
+            if (ev.type === "error") {
+              setResults(prev => prev.map((r, i) => i === idx ? { ...r, done: true, error: true } : r));
+              return;
             }
           } catch {}
         }

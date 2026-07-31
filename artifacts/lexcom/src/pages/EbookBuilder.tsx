@@ -28,7 +28,7 @@ const SUGGESTED_CHAPTERS: Record<string, string[]> = {
   custom:     ["Bab 1", "Bab 2", "Bab 3"],
 };
 
-interface Chapter { id: string; title: string; content: string; generating: boolean; done: boolean; }
+interface Chapter { id: string; title: string; content: string; generating: boolean; done: boolean; error?: string; }
 
 export default function EbookBuilder() {
   const [currentView, setCurrentView] = useState<"setup" | "build" | "preview">("setup");
@@ -104,7 +104,7 @@ INSTRUKSI:
         body: JSON.stringify({ content: prompt }),
       });
 
-      if (!res.body) throw new Error();
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let buf = "";
@@ -123,12 +123,17 @@ INSTRUKSI:
             if (ev.type === "content" && ev.content) {
               setChapters(prev => prev.map(c => c.id === chapterId ? { ...c, content: c.content + ev.content } : c));
             }
+            if (ev.type === "error") {
+              const errMsg = (ev.message as string) ?? "Terjadi kesalahan. Silakan coba lagi.";
+              setChapters(prev => prev.map(c => c.id === chapterId ? { ...c, generating: false, error: errMsg } : c));
+              return;
+            }
           } catch {}
         }
       }
-      setChapters(prev => prev.map(c => c.id === chapterId ? { ...c, generating: false, done: true } : c));
+      setChapters(prev => prev.map(c => c.id === chapterId ? { ...c, generating: false, done: true, error: undefined } : c));
     } catch {
-      setChapters(prev => prev.map(c => c.id === chapterId ? { ...c, generating: false } : c));
+      setChapters(prev => prev.map(c => c.id === chapterId ? { ...c, generating: false, error: "Gagal membuat konten bab. Silakan coba lagi." } : c));
     }
   }, [chapters, template, ebookTitle, ebookDesc, targetAudience, getConvId]);
 
@@ -272,8 +277,8 @@ INSTRUKSI:
                   {chapters.map((chapter, i) => (
                     <div key={chapter.id} className="glass-card rounded-2xl overflow-hidden border border-white/10">
                       <div className="flex items-center gap-3 p-4">
-                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${chapter.done ? "bg-emerald-500/20 text-emerald-400" : chapter.generating ? "bg-primary/20 text-primary" : "bg-white/10 text-muted-foreground"}`}>
-                          {chapter.done ? "✓" : chapter.generating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : i + 1}
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${chapter.done ? "bg-emerald-500/20 text-emerald-400" : chapter.error ? "bg-red-500/20 text-red-400" : chapter.generating ? "bg-primary/20 text-primary" : "bg-white/10 text-muted-foreground"}`}>
+                          {chapter.done ? "✓" : chapter.error ? "!" : chapter.generating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : i + 1}
                         </div>
                         <input
                           value={chapter.title}
@@ -289,9 +294,9 @@ INSTRUKSI:
                           <button
                             onClick={() => expandedChapter === chapter.id ? setExpandedChapter(null) : (chapter.done ? setExpandedChapter(chapter.id) : generateChapter(chapter.id))}
                             disabled={chapter.generating}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${chapter.done ? "bg-white/5 text-muted-foreground hover:bg-white/10" : "bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30"}`}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${chapter.done ? "bg-white/5 text-muted-foreground hover:bg-white/10" : chapter.error ? "bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30" : "bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30"}`}
                           >
-                            {chapter.generating ? "Mengisi..." : chapter.done ? (expandedChapter === chapter.id ? "Sembunyikan" : "Lihat Konten") : "Generate AI"}
+                            {chapter.generating ? "Mengisi..." : chapter.done ? (expandedChapter === chapter.id ? "Sembunyikan" : "Lihat Konten") : chapter.error ? "Coba Lagi" : "Generate AI"}
                           </button>
                           <button onClick={() => removeChapter(chapter.id)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors">
                             <Trash2 className="w-3.5 h-3.5" />
