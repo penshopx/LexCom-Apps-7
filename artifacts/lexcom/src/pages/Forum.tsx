@@ -114,7 +114,7 @@ export default function Forum() {
               <p className="text-muted-foreground mt-2">Tanya, diskusi, dan berbagi pengetahuan hukum bersama komunitas.</p>
             </div>
             <Button
-              onClick={() => setShowModal(true)}
+              onClick={() => { if (!isAuthenticated) { login(); return; } setShowModal(true); }}
               className="rounded-xl gap-2 flex-shrink-0"
             >
               <Plus className="w-4 h-4" /> Buat Thread

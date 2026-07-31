@@ -152,7 +152,7 @@ Selalu jawab dalam Bahasa Indonesia. Jika pertanyaan di luar bidang hukum, arahk
     greeting: "${greeting}"
   };
 </script>
-<script src="https://lexcom.ai/widget.js" async></script>`;
+<script src="${window.location.origin}/widget.js" async></script>`;
 
   const copyEmbed = () => {
     copyToClipboard(embedCode);
