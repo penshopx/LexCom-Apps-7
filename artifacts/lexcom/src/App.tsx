@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { NetworkStatus } from "@/components/NetworkStatus";
 
 const queryClient = new QueryClient();
 
@@ -128,6 +129,7 @@ function App() {
               <FloatingLexBot />
             </Suspense>
           </WouterRouter>
+          <NetworkStatus />
           <Toaster />
         </TooltipProvider>
       </QueryClientProvider>
