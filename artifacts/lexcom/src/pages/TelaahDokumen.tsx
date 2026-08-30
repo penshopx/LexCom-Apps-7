@@ -6,7 +6,7 @@ import { copyToClipboard } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FileSearch, Loader2, Sparkles, Copy, Check, ChevronDown, ChevronUp,
-  ShieldAlert, AlertTriangle, CheckCircle2, FileText, Scale, Brain
+  ShieldAlert, AlertTriangle, CheckCircle2, FileText, Scale, Brain, RotateCcw
 } from "lucide-react";
 
 const REVIEW_AGENTS = [
@@ -91,6 +91,7 @@ interface AgentResult {
   content: string;
   done: boolean;
   error?: boolean;
+  errorMessage?: string;
 }
 
 const RISK_KEYWORDS = {
@@ -120,7 +121,9 @@ export default function TelaahDokumen() {
     const res = await fetch("/api/assistant/conversations", {
       method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
     });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const d = await res.json();
+    if (!Number.isInteger(d.id)) throw new Error("Conversation ID tidak valid");
     convIdRef.current = d.id;
     return d.id as number;
   }, []);
@@ -138,6 +141,8 @@ export default function TelaahDokumen() {
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let buf = "";
+      let receivedContent = false;
+      let malformedEvent = false;
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -150,22 +155,41 @@ export default function TelaahDokumen() {
           try {
             const ev = JSON.parse(t);
             if (ev.type === "content" && ev.content) {
+              receivedContent = true;
               setAgentResults(prev => prev.map((r, i) =>
                 i === idx ? { ...r, content: r.content + ev.content } : r
               ));
             }
-            if (ev.type === "error") {
+            if (ev.type === "error" || ev.error) {
+              const message = (ev.message || ev.error || "Terjadi kesalahan. Silakan coba lagi.") as string;
               setAgentResults(prev => prev.map((r, i) =>
-                i === idx ? { ...r, done: true, error: true, content: r.content || (ev.message as string ?? "Terjadi kesalahan. Silakan coba lagi.") } : r
+                i === idx
+                  ? { ...r, done: true, error: true, errorMessage: message }
+                  : r
               ));
               return;
             }
-          } catch {}
+          } catch {
+            malformedEvent = true;
+          }
         }
       }
-      setAgentResults(prev => prev.map((r, i) => i === idx ? { ...r, done: true } : r));
+      if (malformedEvent || !receivedContent) {
+        const message = malformedEvent
+          ? "Respons AI tidak valid. Silakan coba lagi."
+          : "AI tidak menghasilkan hasil telaah. Silakan coba lagi.";
+        setAgentResults(prev => prev.map((r, i) =>
+          i === idx ? { ...r, done: true, error: true, errorMessage: message } : r
+        ));
+      } else {
+        setAgentResults(prev => prev.map((r, i) => i === idx ? { ...r, done: true } : r));
+      }
     } catch {
-      setAgentResults(prev => prev.map((r, i) => i === idx ? { ...r, done: true, error: true } : r));
+      setAgentResults(prev => prev.map((r, i) =>
+        i === idx
+          ? { ...r, done: true, error: true, errorMessage: "Koneksi ke AI terputus. Silakan coba lagi." }
+          : r
+      ));
     }
   }, []);
 
@@ -178,6 +202,38 @@ export default function TelaahDokumen() {
     try {
       const convId = await getConvId();
       await Promise.all(activeAgents.map((a, i) => streamAgentReview(a, docText, convId, i)));
+    } catch {
+      setAgentResults(prev => prev.map(r => ({
+        ...r,
+        done: true,
+        error: true,
+        errorMessage: "Telaah tidak dapat dimulai. Silakan coba lagi.",
+      })));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const retryAgent = async (agentKey: string) => {
+    if (isProcessing) return;
+    const agent = REVIEW_AGENTS.find(a => a.key === agentKey);
+    const idx = agentResults.findIndex(r => r.key === agentKey);
+    if (!agent || idx < 0 || !docText.trim()) return;
+
+    setIsProcessing(true);
+    setAgentResults(prev => prev.map(r =>
+      r.key === agentKey ? { ...r, content: "", done: false, error: false, errorMessage: undefined } : r
+    ));
+    setExpandedAgent(agentKey);
+    try {
+      const convId = await getConvId();
+      await streamAgentReview(agent, docText, convId, idx);
+    } catch {
+      setAgentResults(prev => prev.map(r =>
+        r.key === agentKey
+          ? { ...r, done: true, error: true, errorMessage: "Telaah tidak dapat dimulai. Silakan coba lagi." }
+          : r
+      ));
     } finally {
       setIsProcessing(false);
     }
@@ -347,12 +403,21 @@ export default function TelaahDokumen() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            {agent.done && !agent.error && (
+                             {agent.done && !agent.error && (
                               <button
                                 onClick={e => { e.stopPropagation(); copyText(agent.content, agent.key); }}
                                 className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
                               >
                                 {copied === agent.key ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+                              </button>
+                            )}
+                            {agent.done && agent.error && (
+                              <button
+                                onClick={e => { e.stopPropagation(); void retryAgent(agent.key); }}
+                                disabled={isProcessing}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-red-500/30 text-xs text-red-300 hover:bg-red-500/10 disabled:opacity-50 transition-colors"
+                              >
+                                <RotateCcw className="w-3 h-3" /> Coba Lagi
                               </button>
                             )}
                             {expandedAgent === agent.key ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
@@ -370,6 +435,10 @@ export default function TelaahDokumen() {
                               <div className="p-4 prose prose-invert prose-sm max-w-none">
                                 {agent.content ? (
                                   <MarkdownRenderer content={agent.content} />
+                                ) : agent.error ? (
+                                  <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+                                    {agent.errorMessage || "Review gagal. Silakan coba lagi."}
+                                  </div>
                                 ) : (
                                   <div className="flex items-center gap-2 text-muted-foreground text-sm">
                                     <Loader2 className="w-4 h-4 animate-spin" /> Sedang menganalisis dokumen...

@@ -1,2 +1,3 @@
 - [LexCom architecture](lexcom-arch.md) — API on :8080/api, frontend on :22529/, OIDC auth with PKCE, all frontend API calls are relative /api/...
 - [CORS & auth](lexcom-cors-auth.md) — CORS origin:true+credentials:true OK in prod (same-origin); login redirect_uri built from x-forwarded-host so it auto-adapts to production domain
+- [Vite workflow restarts](vite-workflow-restarts.md) — if LexCom restarts on 22530, an orphaned Vite process may still own the configured 22529 port
