@@ -37,6 +37,34 @@ function formatRupiah(n: number) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(n);
 }
 
+type BphtbRule = {
+  label: string;
+  npoptkpPertama: number;
+  tarif: number;
+  note: string;
+};
+
+const BPHTB_RULES: Record<string, BphtbRule> = {
+  nasional: {
+    label: "Batas minimum nasional",
+    npoptkpPertama: 80_000_000,
+    tarif: 5,
+    note: "UU HKPD menetapkan NPOPTKP paling sedikit Rp80 juta dan tarif BPHTB paling tinggi 5%.",
+  },
+  dki: {
+    label: "DKI Jakarta — Perda 1/2024",
+    npoptkpPertama: 250_000_000,
+    tarif: 5,
+    note: "Pengumuman Bapenda DKI 2024 menetapkan NPOPTKP Rp250 juta untuk perolehan hak pertama selain waris atau hibah wasiat.",
+  },
+  manual: {
+    label: "Daerah saya (isi manual)",
+    npoptkpPertama: 80_000_000,
+    tarif: 5,
+    note: "Masukkan angka pada Perda atau kanal Bapenda kabupaten/kota tempat BPHTB terutang.",
+  },
+};
+
 // ============================================================
 // KALKULATOR BIAYA PERKARA
 // ============================================================
@@ -94,8 +122,20 @@ function KalkulatorBiayaPerkara() {
 function KalkulatorPesangon() {
   const [masaKerja, setMasaKerja] = useState("");
   const [gajiPokok, setGajiPokok] = useState("");
+  const [wilayahKerja, setWilayahKerja] = useState("");
+  const [upahMinimum, setUpahMinimum] = useState("");
   const [alasanPHK, setAlasanPHK] = useState("efisiensi");
-  const [hasil, setHasil] = useState<null | { uangPesangon: number; upmk: number; uph: number; total: number; multiplikator: number; ketentuanBulan: number }>(null);
+  const [hasil, setHasil] = useState<null | {
+    uangPesangon: number;
+    upmk: number;
+    uph: number;
+    total: number;
+    multiplikator: number;
+    ketentuanBulan: number;
+    bulanUPMK: number;
+    upahMinimumWilayah: number;
+    upahDiBawahMinimum: boolean;
+  }>(null);
 
   const ALASAN_PHK = [
     { value: "efisiensi", label: "Efisiensi / Restrukturisasi", multiplikator: 0.5 },
@@ -122,14 +162,14 @@ function KalkulatorPesangon() {
   }
 
   function getBulanUPMK(tahun: number): number {
-    if (tahun < 3) return 2;
-    if (tahun < 6) return 3;
-    if (tahun < 9) return 4;
-    if (tahun < 12) return 5;
-    if (tahun < 15) return 6;
-    if (tahun < 18) return 7;
-    if (tahun < 21) return 8;
-    if (tahun < 24) return 9;
+    if (tahun < 3) return 0;
+    if (tahun < 6) return 2;
+    if (tahun < 9) return 3;
+    if (tahun < 12) return 4;
+    if (tahun < 15) return 5;
+    if (tahun < 18) return 6;
+    if (tahun < 21) return 7;
+    if (tahun < 24) return 8;
     return 10;
   }
 
@@ -145,7 +185,18 @@ function KalkulatorPesangon() {
     const upmk = gaji * bulanUPMK;
     const uph = multiplikator > 0 ? gaji * 0.15 : 0;
     const total = uangPesangon + upmk + uph;
-    setHasil({ uangPesangon, upmk, uph, total, multiplikator, ketentuanBulan });
+    const minimum = parseFloat(upahMinimum.replace(/[^0-9]/g, "")) || 0;
+    setHasil({
+      uangPesangon,
+      upmk,
+      uph,
+      total,
+      multiplikator,
+      ketentuanBulan,
+      bulanUPMK,
+      upahMinimumWilayah: minimum,
+      upahDiBawahMinimum: minimum > 0 && gaji < minimum,
+    });
   }
 
   const selected = ALASAN_PHK.find((a) => a.value === alasanPHK);
@@ -153,7 +204,7 @@ function KalkulatorPesangon() {
   return (
     <div className="space-y-4">
       <InfoBox>
-        Berdasarkan PP No. 35/2021 tentang PKWT, Alih Daya, Waktu Kerja, Waktu Istirahat, dan PHK. Pesangon = Gaji × Bulan ketentuan × Multiplikator.
+        Berdasarkan PP No. 35/2021. Gunakan upah sebulan aktual (gaji pokok + tunjangan tetap), bukan otomatis UMP/UMK. Skala nasional membatasi uang pesangon sampai 9 bulan upah dan UPMK sampai 10 bulan upah; UMK/UMP hanya menjadi pembanding kewajaran.
       </InfoBox>
       <div className="grid sm:grid-cols-2 gap-3">
         <div>
@@ -161,7 +212,7 @@ function KalkulatorPesangon() {
           <input type="number" value={masaKerja} onChange={(e) => setMasaKerja(e.target.value)} placeholder="contoh: 5" className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary" min="0" />
         </div>
         <div>
-          <label className="text-sm font-medium block mb-1.5">Gaji Pokok (Rp/bulan)</label>
+          <label className="text-sm font-medium block mb-1.5">Upah Sebulan (Rp)</label>
           <input
             type="text"
             value={gajiPokok}
@@ -170,6 +221,32 @@ function KalkulatorPesangon() {
               setGajiPokok(raw ? parseInt(raw).toLocaleString("id-ID") : "");
             }}
             placeholder="contoh: 5.000.000"
+            className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary"
+          />
+          <p className="text-[11px] text-muted-foreground mt-1">Gaji pokok + tunjangan tetap.</p>
+        </div>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div>
+          <label className="text-sm font-medium block mb-1.5">Wilayah Kerja (opsional)</label>
+          <input
+            type="text"
+            value={wilayahKerja}
+            onChange={(e) => setWilayahKerja(e.target.value)}
+            placeholder="contoh: Kota Bandung"
+            className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium block mb-1.5">UMP / UMK Wilayah (Rp, opsional)</label>
+          <input
+            type="text"
+            value={upahMinimum}
+            onChange={(e) => {
+              const raw = e.target.value.replace(/[^0-9]/g, "");
+              setUpahMinimum(raw ? parseInt(raw).toLocaleString("id-ID") : "");
+            }}
+            placeholder="Isi sesuai keputusan gubernur"
             className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary"
           />
         </div>
@@ -186,8 +263,13 @@ function KalkulatorPesangon() {
       {hasil && (
         <div className="space-y-2 mt-2">
           <p className="text-xs text-muted-foreground">
-            Ketentuan: {hasil.ketentuanBulan} bulan upah × multiplikator {selected?.label} (×{hasil.multiplikator})
+            Ketentuan nasional: UP {hasil.ketentuanBulan}/9 bulan dan UPMK {hasil.bulanUPMK}/10 bulan × multiplikator {selected?.label} (×{hasil.multiplikator})
           </p>
+          {hasil.upahDiBawahMinimum && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 text-xs text-amber-300">
+              Upah yang dimasukkan berada di bawah UMP/UMK{wilayahKerja ? ` ${wilayahKerja}` : ""} yang Anda isi. Nilai ini tidak otomatis mengganti upah aktual dalam rumus; periksa status hubungan kerja dan pengecualian yang berlaku.
+            </div>
+          )}
           <ResultBox label="Uang Pesangon (UP)" value={formatRupiah(hasil.uangPesangon)} />
           <ResultBox label="Uang Penghargaan Masa Kerja (UPMK)" value={formatRupiah(hasil.upmk)} />
           <ResultBox label="Uang Penggantian Hak (UPH ~15%)" value={formatRupiah(hasil.uph)} />
@@ -437,6 +519,10 @@ function KalkulatorWaris() {
 function KalkulatorNotaris() {
   const [nilaiAkta, setNilaiAkta] = useState("");
   const [jenisAkta, setJenisAkta] = useState("jual_beli");
+  const [wilayahBphtb, setWilayahBphtb] = useState("nasional");
+  const [perolehanPertama, setPerolehanPertama] = useState("ya");
+  const [npoptkpManual, setNpoptkpManual] = useState("80.000.000");
+  const [tarifManual, setTarifManual] = useState("5");
 
   const JENIS = [
     { value: "jual_beli", label: "Akta Jual Beli (AJB)" },
@@ -460,8 +546,15 @@ function KalkulatorNotaris() {
     if (!nilai) return null;
     const honorarium = hitungHonorarium(nilai);
     const pph = jenisAkta === "jual_beli" ? nilai * 0.025 : 0;
-    const bphtb = jenisAkta === "jual_beli" ? (nilai - 80_000_000) * 0.05 : 0;
-    return { honorarium, pph: Math.max(pph, 0), bphtb: Math.max(bphtb, 0) };
+    const rule = BPHTB_RULES[wilayahBphtb] ?? BPHTB_RULES.nasional;
+    const npoptkp = perolehanPertama === "ya"
+      ? (wilayahBphtb === "manual" ? parseFloat(npoptkpManual.replace(/[^0-9]/g, "")) || 0 : rule.npoptkpPertama)
+      : 0;
+    const tarif = wilayahBphtb === "manual"
+      ? Math.min(Math.max(parseFloat(tarifManual.replace(",", ".")) || 0, 0), 5)
+      : rule.tarif;
+    const bphtb = jenisAkta === "jual_beli" ? Math.max(nilai - npoptkp, 0) * (tarif / 100) : 0;
+    return { honorarium, pph: Math.max(pph, 0), bphtb, npoptkp, tarif, ruleLabel: rule.label };
   }
 
   const hasil = nilaiAkta ? hitung() : null;
@@ -469,7 +562,7 @@ function KalkulatorNotaris() {
   return (
     <div className="space-y-4">
       <InfoBox>
-        Berdasarkan Permenkumham No. 17/2021 tentang Honorarium Notaris dan peraturan perpajakan. PPh dan BPHTB hanya untuk Akta Jual Beli.
+        BPHTB adalah pajak daerah. Tarif dan NPOPTKP mengikuti Perda kabupaten/kota tempat objek berada; profil nasional di bawah hanya batas minimum/tertinggi, bukan angka wajib setiap daerah.
       </InfoBox>
       <div>
         <label className="text-sm font-medium block mb-1.5">Jenis Akta</label>
@@ -477,6 +570,50 @@ function KalkulatorNotaris() {
           {JENIS.map((j) => <option key={j.value} value={j.value}>{j.label}</option>)}
         </select>
       </div>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div>
+          <label className="text-sm font-medium block mb-1.5">Profil BPHTB / Wilayah</label>
+          <select value={wilayahBphtb} onChange={(e) => setWilayahBphtb(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary">
+            {Object.entries(BPHTB_RULES).map(([value, rule]) => <option key={value} value={value}>{rule.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-sm font-medium block mb-1.5">Status Perolehan Hak</label>
+          <select value={perolehanPertama} onChange={(e) => setPerolehanPertama(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary">
+            <option value="ya">Perolehan pertama</option>
+            <option value="tidak">Kedua dan seterusnya</option>
+          </select>
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">{(BPHTB_RULES[wilayahBphtb] ?? BPHTB_RULES.nasional).note}</p>
+      {wilayahBphtb === "manual" && (
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label className="text-sm font-medium block mb-1.5">NPOPTKP Daerah (Rp)</label>
+            <input
+              type="text"
+              value={npoptkpManual}
+              onChange={(e) => {
+                const raw = e.target.value.replace(/[^0-9]/g, "");
+                setNpoptkpManual(raw ? parseInt(raw).toLocaleString("id-ID") : "");
+              }}
+              className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium block mb-1.5">Tarif BPHTB Daerah (%)</label>
+            <input
+              type="number"
+              min="0"
+              max="5"
+              step="0.01"
+              value={tarifManual}
+              onChange={(e) => setTarifManual(e.target.value)}
+              className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary"
+            />
+          </div>
+        </div>
+      )}
       <div>
         <label className="text-sm font-medium block mb-1.5">Nilai Transaksi / Objek Akta (Rp)</label>
         <input type="text" value={nilaiAkta} onChange={(e) => { const raw = e.target.value.replace(/[^0-9]/g, ""); setNilaiAkta(raw ? parseInt(raw).toLocaleString("id-ID") : ""); }} placeholder="contoh: 500.000.000" className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary" />
@@ -486,9 +623,9 @@ function KalkulatorNotaris() {
           <ResultBox label="Honorarium Notaris" value={formatRupiah(hasil.honorarium)} highlight />
           {jenisAkta === "jual_beli" && <>
             <ResultBox label="PPh Penjual (2.5% dari nilai)" value={formatRupiah(hasil.pph)} />
-            <ResultBox label="BPHTB Pembeli (5% × (nilai-NPOPTKP))" value={formatRupiah(hasil.bphtb)} />
+            <ResultBox label={`BPHTB Pembeli (${hasil.tarif}% × (nilai - ${formatRupiah(hasil.npoptkp)}))`} value={formatRupiah(hasil.bphtb)} />
           </>}
-          <p className="text-xs text-muted-foreground">*NPOPTKP Rp 80 juta (nilai default, dapat berbeda per daerah). Biaya aktual dapat berbeda berdasarkan kebijakan notaris setempat.</p>
+          <p className="text-xs text-muted-foreground">*Profil yang dipakai: {hasil.ruleLabel}. Nilai aktual dapat berbeda berdasarkan Perda terbaru, status perolehan, objek, dan kebijakan notaris setempat.</p>
         </div>
       )}
     </div>
