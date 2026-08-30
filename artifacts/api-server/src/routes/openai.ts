@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, conversations, messages } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
-import { batchProcess, isRateLimitError } from "@workspace/integrations-openai-ai-server/batch";
+import { batchProcess, isRateLimitError, limitAiRequest } from "@workspace/integrations-openai-ai-server/batch";
 import {
   CreateOpenaiConversationBody,
   SendOpenaiMessageBody,
@@ -20,12 +20,14 @@ function createSseError(message: string) {
  * behaviour stays consistent across all agents.
  */
 async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
-  const [result] = await batchProcess(
-    [null as null],
-    () => fn(),
-    { concurrency: 1, retries: 5, minTimeout: 1000, maxTimeout: 30000 },
-  );
-  return result!;
+  return limitAiRequest(async () => {
+    const [result] = await batchProcess(
+      [null as null],
+      () => fn(),
+      { concurrency: 1, retries: 5, minTimeout: 1000, maxTimeout: 30000 },
+    );
+    return result!;
+  });
 }
 
 const AGENT_SYSTEM_PROMPTS: Record<string, string> = {

@@ -1,6 +1,62 @@
 import pLimit from "p-limit";
 import pRetry from "p-retry";
 
+const MAX_ACTIVE_AI_STREAMS = 4;
+let activeAiStreams = 0;
+const aiStreamWaiters: Array<() => void> = [];
+
+async function acquireAiStreamSlot(): Promise<() => void> {
+  if (activeAiStreams < MAX_ACTIVE_AI_STREAMS) {
+    activeAiStreams++;
+  } else {
+    await new Promise<void>((resolve) => aiStreamWaiters.push(resolve));
+    activeAiStreams++;
+  }
+
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    activeAiStreams--;
+    aiStreamWaiters.shift()?.();
+  };
+}
+
+/**
+ * Limits the number of active OpenAI requests across all API routes.
+ *
+ * Streaming requests keep their slot until the async iterable is fully
+ * consumed (or cancelled), while non-streaming responses release it
+ * immediately. This prevents parallel chat requests from creating a burst of
+ * 19 active streams when multiple agents/users submit at once.
+ */
+export async function limitAiRequest<T>(operation: () => Promise<T>): Promise<T> {
+  const release = await acquireAiStreamSlot();
+
+  try {
+    const result = await operation();
+    const iterable = result as T & AsyncIterable<unknown>;
+
+    if (result && typeof iterable[Symbol.asyncIterator] === "function") {
+      return (async function* () {
+        try {
+          for await (const item of iterable) {
+            yield item;
+          }
+        } finally {
+          release();
+        }
+      })() as T;
+    }
+
+    release();
+    return result;
+  } catch (error) {
+    release();
+    throw error;
+  }
+}
+
 /**
  * Batch Processing Utilities
  *

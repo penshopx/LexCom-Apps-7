@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, documentsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
-import { batchProcess, isRateLimitError } from "@workspace/integrations-openai-ai-server/batch";
+import { batchProcess, isRateLimitError, limitAiRequest } from "@workspace/integrations-openai-ai-server/batch";
 
 const router: IRouter = Router();
 
@@ -12,12 +12,14 @@ const router: IRouter = Router();
  * behaviour stays consistent across all agents.
  */
 async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
-  const [result] = await batchProcess(
-    [null as null],
-    () => fn(),
-    { concurrency: 1, retries: 5, minTimeout: 1000, maxTimeout: 30000 },
-  );
-  return result!;
+  return limitAiRequest(async () => {
+    const [result] = await batchProcess(
+      [null as null],
+      () => fn(),
+      { concurrency: 1, retries: 5, minTimeout: 1000, maxTimeout: 30000 },
+    );
+    return result!;
+  });
 }
 
 const DOCUMENT_SYSTEM_PROMPTS: Record<string, string> = {

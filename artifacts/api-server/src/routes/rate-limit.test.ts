@@ -26,6 +26,7 @@ vi.mock("@workspace/integrations-openai-ai-server/batch", () => ({
     if (batchShouldFail) throw rateLimitError;
     return [batchResolveWith];
   }),
+  limitAiRequest: vi.fn().mockImplementation(async (operation: () => Promise<unknown>) => operation()),
   isRateLimitError: vi.fn().mockImplementation((err: unknown) => {
     const msg = err instanceof Error ? err.message : String(err);
     return msg.includes("429") || msg.toLowerCase().includes("rate limit");
