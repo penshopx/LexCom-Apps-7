@@ -36,18 +36,19 @@ if (process.env["NODE_ENV"] !== "production") {
   }
 }
 
-// INVARIANT: setReady(true) must only be called after all migrations have
-// fully completed — including any future async migration steps (which must be
-// awaited before reaching this line). Calling setReady prematurely will allow
-// requests to hit an incomplete schema.
-setReady(true);
-logger.info("Migrations complete, server is ready to accept requests");
+// INVARIANT: migrations must finish before the server can become ready, and
+// the server must emit "listening" before requests are allowed through.
+// Keeping these gates separate prevents a failed bind from being reported as
+// a ready API.
+const server = app.listen(port);
 
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
+server.once("listening", () => {
+  setReady(true);
+  logger.info({ port }, "Migrations complete; server is ready to accept requests");
+});
 
-  logger.info({ port }, "Server listening");
+server.once("error", (err) => {
+  setReady(false);
+  logger.fatal({ err, port }, "API server failed to start");
+  process.exit(1);
 });
