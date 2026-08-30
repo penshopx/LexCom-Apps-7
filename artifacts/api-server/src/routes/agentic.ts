@@ -3,6 +3,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { batchProcess, isRateLimitError, limitAiRequest } from "@workspace/integrations-openai-ai-server/batch";
 import { db, conversations, messages } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
+import { LEGAL_ANSWER_STANDARD } from "../lib/legal-answer-standard";
 
 const router: IRouter = Router();
 
@@ -291,7 +292,7 @@ router.post("/agentic/conversations/:id/chat", async (req, res) => {
       const agentMeta = AGENT_META[agentKey]!;
       emit({ type: "agent_start", agent: agentKey, agentName: agentMeta.name, emoji: agentMeta.emoji, color: agentMeta.color });
 
-      const systemPrompt = AGENT_SYSTEM_PROMPTS[agentKey] ?? AGENT_SYSTEM_PROMPTS.corporate;
+      const systemPrompt = `${AGENT_SYSTEM_PROMPTS[agentKey] ?? AGENT_SYSTEM_PROMPTS.corporate}\n\n${LEGAL_ANSWER_STANDARD}`;
 
       const agentMessages = [
         { role: "system" as const, content: systemPrompt },
@@ -353,7 +354,7 @@ router.post("/agentic/conversations/:id/chat", async (req, res) => {
           openai.chat.completions.create({
             model: "gpt-5.2",
             messages: [
-              { role: "system", content: SYNTHESIS_SYSTEM },
+              { role: "system", content: `${SYNTHESIS_SYSTEM}\n\n${LEGAL_ANSWER_STANDARD}` },
               {
                 role: "user",
                 content: `Pertanyaan pengguna:\n${content}\n\n---\n\nPerspektif dari agent spesialis:\n\n${agentSummaries}\n\n---\n\nBuat sintesis komprehensif yang menggabungkan semua perspektif di atas.`,

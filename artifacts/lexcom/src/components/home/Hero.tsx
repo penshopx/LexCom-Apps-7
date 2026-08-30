@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Sparkles, FileText, Search, Bot, Calculator, BookOpen, Crown } from "lucide-react";
+import { Sparkles, Search, Crown } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
 
@@ -37,7 +37,7 @@ export function Hero() {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-card mb-8"
           >
             <span className="animate-pulse">⚡</span>
-            <span className="text-sm font-medium text-primary">Satu Ekosistem. Semua Kekuatan AI Hukum.</span>
+            <span className="text-sm font-medium text-primary">Legal AI Operating System untuk Indonesia</span>
           </motion.div>
 
           <motion.h1
@@ -46,8 +46,8 @@ export function Hero() {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="text-5xl md:text-7xl font-display font-bold leading-tight mb-6"
           >
-            Riset. Tulis. Konsultasi. <br className="hidden md:block" />
-            <span className="text-gradient">Bangun dengan AI Hukum.</span>
+            Dari Masalah Hukum <br className="hidden md:block" />
+            <span className="text-gradient">Menjadi Alur Kerja yang Terarah.</span>
           </motion.h1>
 
           <motion.p
@@ -56,7 +56,7 @@ export function Hero() {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl leading-relaxed"
           >
-            LexCom menghadirkan ekosistem AI hukum terlengkap — 19 pakar AI, Penulis Cerdas, Chatbot Builder, Ebook Builder, Riset AI, database hukum, dan kalkulator — untuk mahasiswa, akademisi, praktisi, dan publik.
+            Orkestrasi 19 spesialis AI untuk riset, drafting, telaah paralel, perkara, kepatuhan, dan edukasi—dengan lapisan pemeriksaan sumber sebelum hasil digunakan.
           </motion.p>
 
           <motion.div
@@ -116,7 +116,7 @@ export function Hero() {
             transition={{ delay: 0.8 }}
             className="mt-6 text-xs text-muted-foreground"
           >
-            Gratis selamanya · Tidak perlu kartu kredit · Upgrade kapan saja
+            Fitur gratis tersedia · Tidak perlu kartu kredit untuk mulai menjelajah
           </motion.p>
         </div>
       </div>

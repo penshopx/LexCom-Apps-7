@@ -1,12 +1,12 @@
 import { motion } from "framer-motion";
 
 const stats = [
-  { value: "300+", label: "Advokat & Praktisi" },
-  { value: "150+", label: "Akademisi & Peneliti" },
-  { value: "2.000+", label: "Mahasiswa Hukum" },
-  { value: "500+", label: "Paralegal & Relawan" },
-  { value: "5.000+", label: "Masyarakat Umum" },
-  { value: "800+", label: "Pelaku UMKM" },
+  { value: "19", label: "Spesialis AI" },
+  { value: "5", label: "Perspektif Telaah" },
+  { value: "6", label: "Kalkulator Hukum" },
+  { value: "1", label: "Orkestrator Utama" },
+  { value: "4", label: "Jalur Kerja Inti" },
+  { value: "3", label: "Portal Sumber Resmi" },
 ];
 
 export function StatsSection() {
@@ -16,10 +16,10 @@ export function StatsSection() {
         
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="text-3xl md:text-5xl font-display font-bold mb-6">
-            Ekosistem Komunitas
+            Bukti Produk yang Bisa Dicoba
           </h2>
           <p className="text-lg text-muted-foreground">
-            LexCom mempertemukan semua pemangku kepentingan hukum dalam satu ekosistem kolaboratif yang saling mendukung.
+            Angka di bawah berasal dari fungsi yang tersedia di aplikasi, bukan estimasi pengguna atau klaim komunitas.
           </p>
         </div>
 

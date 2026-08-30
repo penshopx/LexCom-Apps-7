@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
+import { LegalAnswerTrust } from "@/components/legal/LegalAnswerTrust";
 import { copyToClipboard } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -306,8 +307,9 @@ export default function RisetAI() {
                               >
                                 <div className="p-4">
                                   {agent.content ? (
-                                    <div className="prose prose-invert prose-sm max-w-none">
+                                    <div className="prose prose-invert prose-sm max-w-none space-y-3">
                                       <MarkdownRenderer content={agent.content} />
+                                      <LegalAnswerTrust content={agent.content} compact />
                                     </div>
                                   ) : (
                                     <div className="flex items-center gap-2 text-muted-foreground text-sm">
@@ -400,8 +402,9 @@ export default function RisetAI() {
                         </button>
                       )}
                     </div>
-                    <div className="p-5 prose prose-invert prose-sm max-w-none">
+                    <div className="p-5 prose prose-invert prose-sm max-w-none space-y-3">
                       <MarkdownRenderer content={searchResult || "..."} />
+                      {searchDone && searchResult && <LegalAnswerTrust content={searchResult} />}
                     </div>
                   </div>
                 )}

@@ -1,13 +1,13 @@
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Hero } from "@/components/home/Hero";
+import { WorkflowLauncher } from "@/components/home/WorkflowLauncher";
 import { QuickNavBar } from "@/components/home/QuickNavBar";
 import { AgentsSection } from "@/components/home/AgentsSection";
 import { FeaturesSection } from "@/components/home/FeaturesSection";
 import { EkosistemSection } from "@/components/home/EkosistemSection";
 import { PractitionersSection } from "@/components/home/PractitionersSection";
 import { StatsSection } from "@/components/home/StatsSection";
-import { TestimonialsSection } from "@/components/home/TestimonialsSection";
 import { CtaSection } from "@/components/home/CtaSection";
 import { AboutSection } from "@/components/home/AboutSection";
 
@@ -17,13 +17,13 @@ export default function Home() {
       <Navbar />
       <main className="flex-1">
         <Hero />
+        <WorkflowLauncher />
         <QuickNavBar />
         <FeaturesSection />
         <AgentsSection />
         <EkosistemSection />
         <PractitionersSection />
         <StatsSection />
-        <TestimonialsSection />
         <CtaSection />
         <AboutSection />
       </main>

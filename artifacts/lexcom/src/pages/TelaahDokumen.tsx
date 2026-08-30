@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
+import { LegalAnswerTrust } from "@/components/legal/LegalAnswerTrust";
 import { copyToClipboard } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -22,7 +23,7 @@ const REVIEW_AGENTS = [
 2. Kejelasan dan presisi redaksi
 3. Potensi celah atau ambiguitas
 4. Saran perbaikan konkret
-Format respons: gunakan heading untuk setiap aspek, berikan penilaian Oke/Perhatian/Kritis pada tiap temuan.`,
+Format setiap temuan sebagai heading dengan tingkat Kritis/Tinggi/Sedang/Rendah, lalu tulis: bagian atau kutipan yang ditinjau, risiko, alasan, saran redaksi, dan dasar hukum. Jangan menyatakan dokumen aman secara keseluruhan.`,
   },
   {
     key: "corporate",
@@ -36,7 +37,7 @@ Format respons: gunakan heading untuk setiap aspek, berikan penilaian Oke/Perhat
 2. Kepatuhan terhadap regulasi bisnis Indonesia (UU PT, OSS, dll.)
 3. Klausul yang tidak menguntungkan atau tidak wajar
 4. Rekomendasi negosiasi dan perlindungan klien
-Format: berikan rating risiko (Rendah/Sedang/Tinggi) dan saran konkret.`,
+Format setiap temuan sebagai heading dengan tingkat Kritis/Tinggi/Sedang/Rendah, lalu tulis: bagian atau kutipan yang ditinjau, risiko, alasan, rekomendasi negosiasi, dan dasar hukum. Jangan menyatakan dokumen aman secara keseluruhan.`,
   },
   {
     key: "employment",
@@ -50,7 +51,7 @@ Format: berikan rating risiko (Rendah/Sedang/Tinggi) dan saran konkret.`,
 2. Hak-hak pekerja yang terlindungi atau dilanggar
 3. Klausul ketenagakerjaan yang bermasalah
 4. Rekomendasi agar dokumen comply dengan hukum ketenagakerjaan
-Jika dokumen bukan terkait ketenagakerjaan, analisis dari sudut pandang perburuhan secara umum.`,
+Jika dokumen bukan terkait ketenagakerjaan, nyatakan bahwa perspektif ini tidak relevan tanpa memaksakan temuan. Untuk setiap temuan, tulis bagian yang ditinjau, tingkat risiko, alasan, perbaikan, dan dasar hukum.`,
   },
   {
     key: "researcher",
@@ -60,11 +61,11 @@ Jika dokumen bukan terkait ketenagakerjaan, analisis dari sudut pandang perburuh
     role: "Dasar Hukum & Preseden",
     desc: "Memverifikasi dasar hukum dan mencari preseden relevan",
     prompt: `Anda adalah Legal Researcher AI. Analisis dokumen hukum berikut dari sisi:
-1. Dasar hukum yang digunakan — apakah valid dan masih berlaku?
+1. Dasar hukum yang digunakan — apakah dapat dikenali dan apa yang masih perlu diverifikasi pada sumber resmi?
 2. Preseden dan yurisprudensi relevan dari putusan MA/MK
 3. Potensi sengketa hukum berdasarkan kasus serupa
 4. Referensi peraturan tambahan yang harus dipertimbangkan
-Berikan analisis akademis dan praktis yang komprehensif.`,
+Jangan mengarang nomor putusan atau status berlaku. Untuk setiap temuan, tulis tingkat keyakinan, dasar hukum, bagian dokumen terkait, dan tautan/portal resmi yang perlu diperiksa.`,
   },
   {
     key: "notaris",
@@ -78,7 +79,8 @@ Berikan analisis akademis dan praktis yang komprehensif.`,
 2. Kelengkapan persyaratan formal (tanda tangan, meterai, saksi, dll.)
 3. Kesesuaian dengan standar akta notaris Indonesia
 4. Langkah legalisasi/pengesahan yang diperlukan
-5. Risiko jika dokumen tidak dinotariskan`,
+5. Risiko jika dokumen tidak dinotariskan
+Untuk setiap temuan, tulis bagian dokumen terkait, tingkat risiko, alasan, formalitas yang diperlukan, dan dasar hukum. Jangan menyimpulkan autentisitas tanpa melihat dokumen asli.`,
   },
 ];
 
@@ -104,7 +106,8 @@ function getRiskBadge(content: string) {
   const lower = content.toLowerCase();
   if (RISK_KEYWORDS.high.some(k => lower.includes(k))) return { label: "Kritis", color: "bg-red-500/20 text-red-400 border-red-500/30", icon: ShieldAlert };
   if (RISK_KEYWORDS.medium.some(k => lower.includes(k))) return { label: "Perhatian", color: "bg-amber-500/20 text-amber-400 border-amber-500/30", icon: AlertTriangle };
-  return { label: "Aman", color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30", icon: CheckCircle2 };
+  if (RISK_KEYWORDS.low.some(k => lower.includes(k))) return { label: "Risiko Rendah", color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30", icon: CheckCircle2 };
+  return { label: "Perlu Verifikasi", color: "bg-blue-500/20 text-blue-300 border-blue-500/30", icon: FileSearch };
 }
 
 export default function TelaahDokumen() {
@@ -432,9 +435,12 @@ export default function TelaahDokumen() {
                               exit={{ height: 0, opacity: 0 }}
                               className="border-t border-white/10"
                             >
-                              <div className="p-4 prose prose-invert prose-sm max-w-none">
+                              <div className="p-4 prose prose-invert prose-sm max-w-none space-y-3">
                                 {agent.content ? (
-                                  <MarkdownRenderer content={agent.content} />
+                                  <>
+                                    <MarkdownRenderer content={agent.content} />
+                                    <LegalAnswerTrust content={agent.content} compact />
+                                  </>
                                 ) : agent.error ? (
                                   <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
                                     {agent.errorMessage || "Review gagal. Silakan coba lagi."}

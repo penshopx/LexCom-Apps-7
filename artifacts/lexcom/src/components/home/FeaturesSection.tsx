@@ -10,8 +10,8 @@ const PILLARS = [
     icon: Bot,
     title: "Konsultasi AI",
     subtitle: "Chaesa Lexbot · 19 Agen AI Spesialis · Agentic Chatbots",
-    desc: "Multi-agent AI yang berpikir, berkolaborasi, dan menjawab pertanyaan hukum secara proaktif dalam Bahasa Indonesia.",
-    features: ["Chaesa Lexbot multi-agent orchestrator", "19 AI spesialis bidang hukum", "Streaming real-time 24/7", "Agentic multi-agent reasoning"],
+    desc: "Orkestrasi multi-agen yang memilih spesialis relevan, menyusun analisis awal, dan menampilkan rujukan yang masih perlu diperiksa.",
+    features: ["Chaesa Lexbot multi-agent orchestrator", "19 AI spesialis bidang hukum", "Respons streaming", "Sintesis lintas perspektif"],
     link: "/lexbot",
     color: "from-violet-500 to-purple-600",
     border: "hover:border-violet-500/40",
@@ -21,8 +21,8 @@ const PILLARS = [
     icon: Database,
     title: "Knowledge Base Hukum",
     subtitle: "Peraturan · Putusan · Panduan · Glosarium",
-    desc: "Database hukum terlengkap: 53+ peraturan, 30+ putusan landmark, 30+ panduan praktis, 120+ glosarium istilah hukum.",
-    features: ["53 UU, PP, Perpres, Permen", "30+ putusan MK, MA, PN, PA", "30+ panduan prosedur hukum", "120+ istilah glosarium hukum"],
+    desc: "Katalog referensi internal untuk eksplorasi awal, dilengkapi tautan menuju portal pemerintah agar status sumber dapat diperiksa.",
+    features: ["Katalog UU, PP, Perpres, dan Permen", "Koleksi putusan kurasi", "Panduan prosedur hukum", "Glosarium istilah hukum"],
     link: "/peraturan",
     color: "from-blue-500 to-cyan-500",
     border: "hover:border-blue-500/40",
@@ -43,8 +43,8 @@ const PILLARS = [
     icon: GraduationCap,
     title: "Pendidikan Hukum",
     subtitle: "Kursus · Panduan · Glosarium · Mentoring AI",
-    desc: "Ekosistem belajar hukum yang komprehensif — dari kursus online, panduan step-by-step, hingga mentoring AI interaktif.",
-    features: ["Kursus online bersertifikat", "30+ panduan praktis hukum", "120+ istilah glosarium", "Mentoring AI Socratic method"],
+    desc: "Materi belajar, panduan langkah demi langkah, glosarium, dan latihan interaktif untuk memahami konsep hukum.",
+    features: ["Modul kursus online", "Panduan praktis hukum", "Glosarium istilah", "Latihan tanya jawab AI"],
     link: "/kursus",
     color: "from-orange-500 to-amber-500",
     border: "hover:border-orange-500/40",
@@ -54,8 +54,8 @@ const PILLARS = [
     icon: Users,
     title: "Jaringan Profesional",
     subtitle: "Pengacara · Forum · Komunitas",
-    desc: "Hubungkan diri dengan ribuan advokat, akademisi, mahasiswa, dan praktisi hukum dalam ekosistem kolaboratif.",
-    features: ["Direktori 300+ pengacara terverifikasi", "Forum diskusi kasus hukum", "Komunitas multi-segmen", "Booking konsultasi online"],
+    desc: "Temukan profil praktisi dan ruang diskusi ketika persoalan membutuhkan konteks manusia atau pemeriksaan profesional.",
+    features: ["Direktori profil praktisi", "Forum diskusi hukum", "Komunitas lintas peran", "Jalur menuju bantuan profesional"],
     link: "/pengacara",
     color: "from-pink-500 to-rose-500",
     border: "hover:border-pink-500/40",
@@ -83,7 +83,7 @@ export function FeaturesSection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-5">
-            <Sparkles className="w-4 h-4" /> Platform AI Hukum Terlengkap Indonesia
+            <Sparkles className="w-4 h-4" /> Sistem Kerja AI Hukum Indonesia
           </div>
           <h2 className="text-3xl md:text-5xl font-display font-bold mb-5">
             6 Pilar Ekosistem <span className="text-gradient">LexCom</span>

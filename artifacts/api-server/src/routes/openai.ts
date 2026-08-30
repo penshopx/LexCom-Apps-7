@@ -7,6 +7,7 @@ import {
   CreateOpenaiConversationBody,
   SendOpenaiMessageBody,
 } from "@workspace/api-zod";
+import { LEGAL_ANSWER_STANDARD } from "../lib/legal-answer-standard";
 
 const router: IRouter = Router();
 
@@ -439,7 +440,7 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
       .where(eq(messages.conversationId, id))
       .orderBy(asc(messages.createdAt));
 
-    const systemPrompt = AGENT_SYSTEM_PROMPTS[conv.agentType] ?? AGENT_SYSTEM_PROMPTS.general;
+    const systemPrompt = `${AGENT_SYSTEM_PROMPTS[conv.agentType] ?? AGENT_SYSTEM_PROMPTS.general}\n\n${LEGAL_ANSWER_STANDARD}`;
 
     const chatMessages = [
       { role: "system" as const, content: systemPrompt },

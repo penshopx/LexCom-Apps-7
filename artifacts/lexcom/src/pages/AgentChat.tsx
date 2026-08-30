@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
+import { LegalAnswerTrust } from "@/components/legal/LegalAnswerTrust";
 
 const AGENTS: Record<string, { emoji: string; name: string; category: string; description: string; specialties: string[] }> = {
   corporate: {
@@ -503,6 +504,7 @@ export default function AgentChat() {
                       ) : msg.content ? (
                         <div className="space-y-3">
                           <MarkdownRenderer content={msg.content} className="text-sm" />
+                           {!msg.error && <LegalAnswerTrust content={msg.content} compact />}
                           {msg.error && msg.retryText && (
                             <Button
                               type="button"

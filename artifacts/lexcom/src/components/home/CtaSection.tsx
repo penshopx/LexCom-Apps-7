@@ -11,10 +11,10 @@ export function CtaSection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="text-4xl md:text-5xl font-display font-bold mb-6">
-            Bergabung Sekarang — <span className="text-gradient">Gratis!</span>
+            Mulai dari Masalah <span className="text-gradient">yang Nyata</span>
           </h2>
           <p className="text-lg text-muted-foreground">
-            Bergabunglah dengan ribuan anggota komunitas — masyarakat, advokat, akademisi, dan mahasiswa hukum — yang bersama-sama membangun ekosistem hukum digital Indonesia.
+            Gunakan LexCom untuk menyusun analisis awal, memeriksa dokumen, atau mengelola perkara. Untuk keputusan penting, lanjutkan dengan verifikasi sumber dan bantuan profesional.
           </p>
         </div>
 
@@ -30,11 +30,11 @@ export function CtaSection() {
             </div>
             <h3 className="text-2xl font-display font-bold text-foreground mb-4">Untuk Masyarakat</h3>
             <p className="text-muted-foreground mb-8">
-              Akses konsultasi hukum gratis, edukasi, dan pendampingan dari praktisi berlisensi.
+              Jelajahi fitur AI, edukasi, kalkulator, dan katalog hukum untuk memahami pilihan awal Anda.
             </p>
             <Link href="/agents" className="w-full mt-auto">
               <button className="w-full py-4 rounded-xl font-bold bg-white text-background hover:bg-gray-200 transition-colors">
-                Mulai Konsultasi Gratis
+                Mulai dengan LexCom
               </button>
             </Link>
           </motion.div>
@@ -50,18 +50,18 @@ export function CtaSection() {
             </div>
             <h3 className="text-2xl font-display font-bold text-foreground mb-4">Untuk Praktisi Hukum</h3>
             <p className="text-muted-foreground mb-8">
-              Akses alat bantu digital, kelola perkara, dan berkontribusi kepada masyarakat.
+              Gunakan alat drafting, telaah multi-agen, riset, dan manajemen perkara sebagai pendamping kerja.
             </p>
             <Link href="/pengacara" className="w-full mt-auto">
               <button className="w-full py-4 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg shadow-primary/25">
-                Daftar sebagai Praktisi
+                Jelajahi Alat Praktisi
               </button>
             </Link>
           </motion.div>
         </div>
 
         <p className="text-center text-sm text-muted-foreground mt-8 font-medium">
-          Tidak perlu kartu kredit • Daftar dalam 2 menit • Konsultasi pertama gratis
+          Fitur gratis tersedia • Sumber AI tetap perlu diverifikasi • Bukan pengganti nasihat hukum profesional
         </p>
       </div>
     </section>

@@ -81,14 +81,14 @@ const NODE_POSITIONS = [
 ];
 
 const MOCK_NODES = [
-  { label: "Putusan MA\n1234/Pid.B/2023", type: "central", color: "#8b5cf6" },
-  { label: "MA\n567/Pid/2021", type: "related", color: "#3b82f6" },
-  { label: "MK No.\n023/2020", type: "mk", color: "#ef4444" },
-  { label: "PN Jakarta\n890/Pid/2022", type: "lower", color: "#10b981" },
-  { label: "PN Surabaya\n234/Pid/2023", type: "lower", color: "#10b981" },
-  { label: "MA\n456/Pid/2019", type: "related", color: "#3b82f6" },
-  { label: "MA\n789/Pid/2018", type: "related", color: "#3b82f6" },
-  { label: "PN Bandung\n012/Pid/2020", type: "lower", color: "#10b981" },
+  { label: "Putusan\nUtama", type: "central", color: "#8b5cf6" },
+  { label: "Putusan MA\nTerkait A", type: "related", color: "#3b82f6" },
+  { label: "Putusan MK\nTerkait", type: "mk", color: "#ef4444" },
+  { label: "Pengadilan\nTingkat I", type: "lower", color: "#10b981" },
+  { label: "Pengadilan\nTingkat I", type: "lower", color: "#10b981" },
+  { label: "Putusan MA\nTerkait B", type: "related", color: "#3b82f6" },
+  { label: "Putusan MA\nTerkait C", type: "related", color: "#3b82f6" },
+  { label: "Pengadilan\nTingkat I", type: "lower", color: "#10b981" },
 ];
 
 export default function PetaPreseden() {
@@ -186,7 +186,7 @@ export default function PetaPreseden() {
               Peta Preseden <span className="text-gradient">Yurisprudensi</span>
             </h1>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Temukan dan visualisasikan hubungan antar putusan pengadilan. 3 agen AI memetakan preseden secara paralel dari perspektif yang berbeda — lebih dalam dari sekadar pencarian keyword.
+              Analisis kandidat preseden dari tiga perspektif AI. Visual jaringan masih berupa contoh beta dan bukan hasil knowledge graph putusan produksi.
             </p>
           </div>
 
@@ -231,7 +231,7 @@ export default function PetaPreseden() {
               <div className="lg:col-span-2">
                 <div className="glass-card rounded-2xl p-5 border border-white/10 sticky top-28">
                   <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
-                    <Network className="w-4 h-4 text-primary" /> Jaringan Preseden
+                    <Network className="w-4 h-4 text-primary" /> Contoh Jaringan Preseden (Beta)
                   </h3>
 
                   <div className="relative h-56 w-full mb-4">
@@ -291,6 +291,9 @@ export default function PetaPreseden() {
                   </div>
 
                   <div className="mt-4 pt-4 border-t border-white/10">
+                    <p className="mb-3 text-[10px] leading-relaxed text-amber-300">
+                      Node di atas hanya menunjukkan bentuk visualisasi. Verifikasi setiap nomor putusan pada database resmi MA/MK.
+                    </p>
                     <a
                       href="https://putusan3.mahkamahagung.go.id/"
                       target="_blank"

@@ -41,8 +41,8 @@ const EKOSISTEM = [
       { icon: FileText,     label: "Generator Dokumen",  desc: "Draf otomatis berbasis AI",         href: "/documents" },
       { icon: Microscope,   label: "Telaah Dokumen AI",  desc: "Review 5 agen paralel",             href: "/telaah-dokumen" },
       { icon: FolderOpen,   label: "Manajemen Kasus",    desc: "Kelola perkara & dokumen",          href: "/cases" },
-      { icon: Briefcase,    label: "Legal Ops Suite",    desc: "6 modul corporate legal dashboard", href: "/legal-ops" },
-      { icon: BookMarked,   label: "Vault Template",     desc: "1.500+ template dokumen hukum",     href: "/vault" },
+      { icon: Briefcase,    label: "Legal Ops Suite",    desc: "Modul operasional dalam pengembangan", href: "/legal-ops" },
+      { icon: BookMarked,   label: "Vault Template",     desc: "Koleksi template kurasi",             href: "/vault" },
     ],
   },
   {
@@ -52,8 +52,8 @@ const EKOSISTEM = [
     titleColor: "text-violet-400",
     items: [
       { icon: Search,      label: "Riset AI Hub",          desc: "Ringkasan multi-agen & pencarian semantik", href: "/riset-ai" },
-      { icon: Globe,       label: "Peta Preseden",         desc: "Visualisasi jaringan yurisprudensi",        href: "/peta-preseden" },
-      { icon: BarChart3,   label: "Intelijen Regulasi",   desc: "Skor risiko kepatuhan bisnis & AI",         href: "/intelijen-regulasi" },
+      { icon: Globe,       label: "Peta Preseden Beta",    desc: "Analisis AI + contoh visual relasi",        href: "/peta-preseden" },
+      { icon: BarChart3,   label: "Snapshot Regulasi",     desc: "Dataset isu dan checklist kurasi",          href: "/intelijen-regulasi" },
     ],
   },
   {
@@ -85,7 +85,7 @@ const EKOSISTEM = [
     border: "border-orange-500/20",
     titleColor: "text-orange-400",
     items: [
-      { icon: GraduationCap,label: "Kursus Online",       desc: "Kursus hukum bersertifikat",       href: "/kursus" },
+      { icon: GraduationCap,label: "Kursus Online",       desc: "Materi belajar hukum",             href: "/kursus" },
       { icon: BookOpen,     label: "Akademi Advokat",     desc: "CPD, UPA prep, etika profesi",      href: "/akademi-advokat" },
       { icon: GraduationCap,label: "BimTek Profesi Hukum",desc: "6 jalur: Advokat, Notaris, PPAT…", href: "/bimtek" },
       { icon: BookOpen,     label: "Perpustakaan Hukum",  desc: "96+ e-book & AI Tanya Jawab",       href: "/perpustakaan" },
@@ -99,7 +99,7 @@ const EKOSISTEM = [
     border: "border-pink-500/20",
     titleColor: "text-pink-400",
     items: [
-      { icon: User2,        label: "Direktori Pengacara", desc: "300+ advokat terverifikasi",      href: "/pengacara" },
+      { icon: User2,        label: "Direktori Pengacara", desc: "Profil praktisi untuk dijelajahi", href: "/pengacara" },
       { icon: MessageSquare,label: "Forum Hukum",         desc: "Diskusi kasus & pertanyaan",      href: "/forum" },
       { icon: Users,        label: "Komunitas",           desc: "Jaringan praktisi & akademisi",   href: "/komunitas" },
     ],
@@ -132,7 +132,7 @@ export function EkosistemSection() {
             Seluruh Fitur dalam <span className="text-gradient">Satu Platform</span>
           </h2>
           <p className="text-lg text-muted-foreground">
-            LexCom mengintegrasikan AI, database hukum, alat bantu, pendidikan, dan jaringan profesional — platform hukum digital terlengkap Indonesia.
+            LexCom menghubungkan AI, katalog referensi, alat bantu, pendidikan, dan jaringan profesional dalam satu alur kerja hukum.
           </p>
         </div>
 

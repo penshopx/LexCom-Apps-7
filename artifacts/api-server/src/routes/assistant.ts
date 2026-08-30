@@ -3,6 +3,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { batchProcess, isRateLimitError, limitAiRequest } from "@workspace/integrations-openai-ai-server/batch";
 import { db, conversations, messages } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
+import { LEGAL_ANSWER_STANDARD } from "../lib/legal-answer-standard";
 
 const router: IRouter = Router();
 
@@ -431,7 +432,7 @@ router.post("/assistant/conversations/:id/chat", async (req, res) => {
           openai.chat.completions.create({
             model: "gpt-5.2",
             messages: [
-              { role: "system" as const, content: `${ORCHESTRATOR_SYSTEM}\n\nJawab secara langsung dan informatif dalam Bahasa Indonesia. Gunakan format markdown.` },
+              { role: "system" as const, content: `${ORCHESTRATOR_SYSTEM}\n\nJawab secara langsung dan informatif dalam Bahasa Indonesia. Gunakan format markdown.\n\n${LEGAL_ANSWER_STANDARD}` },
               ...chatHistory,
               { role: "user" as const, content },
               ...(fallbackContent ? [{ role: "assistant" as const, content: fallbackContent }] : []),
@@ -540,7 +541,7 @@ router.post("/assistant/conversations/:id/chat", async (req, res) => {
       const specialistName = SPECIALIST_NAMES[specialist] ?? specialist;
       sendEvent({ type: "action", action: "delegating", specialist, specialistName, reason });
 
-      const specialistSystem = SPECIALIST_PROMPTS[specialist] ?? SPECIALIST_PROMPTS.corporate;
+      const specialistSystem = `${SPECIALIST_PROMPTS[specialist] ?? SPECIALIST_PROMPTS.corporate}\n\n${LEGAL_ANSWER_STANDARD}`;
 
       const specialistMessages = [
         { role: "system" as const, content: specialistSystem },
@@ -591,7 +592,7 @@ router.post("/assistant/conversations/:id/chat", async (req, res) => {
             messages: [
               {
                 role: "system",
-                content: `Anda adalah LexBot, asisten LexCom yang membuat rencana tindakan terstruktur. Kembangkan rencana berikut menjadi lebih detail, praktis, dan actionable.\n\n${PLATFORM_KNOWLEDGE}`,
+                content: `Anda adalah LexBot, asisten LexCom yang membuat rencana tindakan terstruktur. Kembangkan rencana berikut menjadi lebih detail dan praktis.\n\n${PLATFORM_KNOWLEDGE}\n\n${LEGAL_ANSWER_STANDARD}`,
               },
               {
                 role: "user",
@@ -633,7 +634,7 @@ router.post("/assistant/conversations/:id/chat", async (req, res) => {
           openai.chat.completions.create({
             model: "gpt-5.2",
             messages: [
-              { role: "system" as const, content: `${ORCHESTRATOR_SYSTEM}\n\nJawablah dengan langsung dan informatif. Gunakan format markdown yang bersih.` },
+              { role: "system" as const, content: `${ORCHESTRATOR_SYSTEM}\n\nJawablah dengan langsung dan informatif. Gunakan format markdown yang bersih.\n\n${LEGAL_ANSWER_STANDARD}` },
               ...chatHistory,
               { role: "user" as const, content },
               { role: "assistant" as const, content: response },

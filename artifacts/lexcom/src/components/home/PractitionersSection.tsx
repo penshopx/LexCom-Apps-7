@@ -24,8 +24,8 @@ const tools = [
   {
     icon: Search,
     title: "Database Hukum",
-    desc: "Akses database peraturan perundang-undangan dan putusan pengadilan.",
-    tags: ["Peraturan Perundangan", "Putusan Pengadilan", "Yurisprudensi", "Regulasi Terbaru"],
+    desc: "Jelajahi katalog peraturan dan tautan menuju database putusan resmi.",
+    tags: ["Katalog Peraturan", "Tautan Putusan Resmi", "Yurisprudensi Kurasi", "Pemeriksaan Sumber"],
     action: "Eksplorasi →",
     href: "/peraturan",
     primary: false
@@ -54,7 +54,7 @@ export function PractitionersSection() {
             Alat Bantu Digital untuk Praktik Hukum Modern
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl">
-            LexCom menyediakan ekosistem digital lengkap bagi advokat dan praktisi hukum untuk menjalankan praktik secara lebih efisien.
+            LexCom menyediakan alat bantu digital untuk riset awal, drafting, telaah, dan pengelolaan perkara. Hasil AI tetap perlu ditinjau oleh praktisi.
           </p>
         </div>
 

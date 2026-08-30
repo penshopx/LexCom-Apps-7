@@ -128,7 +128,7 @@ function AIAnalysisPanel({ isu, open }: { isu: IsuRegulasi; open: boolean }) {
                 <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
                   <Brain className="w-3 h-3 text-primary" />
                 </div>
-                <span className="text-[11px] font-semibold text-primary">Analisis AI LexCom</span>
+                <span className="text-[11px] font-semibold text-primary">Analisis Kurasi LexCom</span>
               </div>
               <p className="text-xs text-foreground/80 leading-relaxed">{isu.analisisAI}</p>
             </div>
@@ -290,7 +290,7 @@ const STATS = [
   { label: "Isu Aktif", value: DATA_ISU.length.toString(), icon: AlertTriangle, color: "text-orange-400", subLabel: "dipantau" },
   { label: "Kritis / Tinggi", value: DATA_ISU.filter(d => d.risikoLevel === "KRITIS" || d.risikoLevel === "TINGGI").length.toString(), icon: AlertCircle, color: "text-red-400", subLabel: "butuh tindakan segera" },
   { label: "Sektor Dipantau", value: (KATEGORI_FILTER.length - 1).toString(), icon: Target, color: "text-primary", subLabel: "industri & sektor" },
-  { label: "Update Terakhir", value: "28 Mar 2026", icon: RefreshCw, color: "text-green-400", subLabel: "data terkini" },
+  { label: "Snapshot Data", value: "28 Mar 2026", icon: RefreshCw, color: "text-green-400", subLabel: "bukan monitoring real-time" },
 ];
 
 // ─── AI Ask Panel ────────────────────────────────────────────────────────────
@@ -349,8 +349,8 @@ function AIAskPanel() {
             <Sparkles className="w-4 h-4 text-white" />
           </div>
           <div>
-            <p className="text-xs font-bold text-foreground">Tanya Pakar Regulasi AI</p>
-            <p className="text-[10px] text-muted-foreground">Powered by LexCom AI</p>
+            <p className="text-xs font-bold text-foreground">Simulasi Tanya Regulasi</p>
+            <p className="text-[10px] text-muted-foreground">Demo berbasis skenario kurasi, bukan data real-time</p>
           </div>
         </div>
       </div>

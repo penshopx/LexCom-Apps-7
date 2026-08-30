@@ -49,13 +49,13 @@ export function AgentsSection() {
 
         <div className="text-center max-w-3xl mx-auto mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-5">
-            <Sparkles className="w-4 h-4" /> Tim AI Hukum Terlengkap
+            <Sparkles className="w-4 h-4" /> Orkestrasi Multi-Agen
           </div>
           <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">
             19 Agen AI Hukum <span className="text-gradient">Spesialis</span>
           </h2>
           <p className="text-lg text-muted-foreground">
-            Setiap agen dilatih khusus dalam bidangnya — siap memberikan konsultasi hukum yang akurat, mendalam, dan kontekstual dalam Bahasa Indonesia.
+            Setiap agen memiliki prompt dan fokus bidang yang berbeda untuk membantu analisis awal. Hasil tetap perlu diperiksa terhadap fakta, dokumen asli, dan sumber resmi.
           </p>
         </div>
 
@@ -99,7 +99,7 @@ export function AgentsSection() {
                       </div>
                       <div className="flex flex-col items-end gap-1">
                         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
-                          <Circle className="w-1.5 h-1.5 fill-current" /> Online
+                          <Circle className="w-1.5 h-1.5 fill-current" /> AI
                         </div>
                         <span className={`text-[10px] font-semibold ${BADGE_COLOR[agent.category]}`}>
                           {agent.category}

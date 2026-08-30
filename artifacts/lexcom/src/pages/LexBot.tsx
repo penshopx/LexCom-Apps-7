@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Navbar } from "@/components/layout/Navbar";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
+import { LegalAnswerTrust } from "@/components/legal/LegalAnswerTrust";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -575,6 +576,7 @@ function MessageBubble({
           {message.content ? (
             <div className="space-y-3">
               <MarkdownRenderer content={message.content} className="text-sm" />
+              {!message.error && <LegalAnswerTrust content={message.content} compact />}
               {message.error && message.retryText && (
                 <Button
                   type="button"
