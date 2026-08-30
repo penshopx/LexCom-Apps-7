@@ -5,9 +5,11 @@ import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
 import { copyToClipboard } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Network, Search, Loader2, Sparkles, ArrowRight, Scale,
-  ExternalLink, ChevronRight, BookOpen, Copy, Check
+  Network, Search, Loader2, ExternalLink, ChevronRight, Copy, Check,
+  AlertTriangle, X, Link2,
 } from "lucide-react";
+import { buildPrecedentGraph, type GraphNode, type GraphEdge } from "@/data/peta-helper";
+import { type Putusan } from "@/data/putusan";
 
 const EXAMPLE_QUERIES = [
   "Putusan tentang PHK sepihak tanpa pesangon",
@@ -25,11 +27,9 @@ const PRECEDENT_AGENTS = [
     name: "Legal Researcher AI",
     color: "bg-violet-600",
     role: "Temuan Preseden",
-    prompt: `Anda adalah Legal Researcher AI Indonesia. Untuk topik hukum berikut, identifikasi dan jelaskan:
-1. **5-8 Putusan Mahkamah Agung (MA) yang paling relevan** — sebutkan nomor putusan, tahun, isu hukum, dan amar putusan kunci
-2. **Putusan Mahkamah Konstitusi (MK) yang relevan** jika ada
-3. **Kaidah/Ratio Decidendi** yang ditetapkan
-4. **Tren putusan** — apakah konsisten atau ada perbedaan antar majelis?
+    prompt: `Anda adalah Legal Researcher AI Indonesia. Analisis topik hukum berikut dan jelaskan secara konseptual. Graf preseden di antarmuka dibangun secara deterministik dari data katalog lokal, jadi tugas Anda bukan mengarang nomor fiktif melainkan memberikan konteks atas putusan yang ada:
+1. **Kaidah/Ratio Decidendi** dari isu ini
+2. **Konteks Hukum** yang mendasari (jika ada rujukan lokal, jelaskan relevansinya)
 Topik: `,
   },
   {
@@ -38,12 +38,9 @@ Topik: `,
     name: "Criminal Defense AI",
     color: "bg-slate-600",
     role: "Preseden Pidana",
-    prompt: `Anda adalah Criminal Defense AI. Jika topik berkaitan dengan hukum pidana, petakan:
-1. **Putusan pidana penting** yang menjadi preseden (PN, PT, MA)
-2. **Perbedaan putusan** antar instansi
-3. **Strategi pembelaan** yang berhasil berdasarkan preseden
-4. **Implikasi untuk kasus serupa**
-Jika tidak berkaitan pidana, analisis dari perspektif perlindungan hak-hak dalam konteks ini.
+    prompt: `Anda adalah Criminal Defense AI. Analisis topik ini dari sudut pandang pembelaan pidana. Jika ada kandidat putusan dari katalog lokal, gunakan sebagai ilustrasi:
+1. **Strategi pembelaan** atau pendekatan hukum
+2. **Implikasi untuk kasus serupa**
 Topik: `,
   },
   {
@@ -52,11 +49,9 @@ Topik: `,
     name: "Corporate Lawyer AI",
     color: "bg-blue-600",
     role: "Preseden Bisnis",
-    prompt: `Anda adalah Corporate Lawyer AI. Petakan preseden dari perspektif hukum bisnis:
-1. **Putusan Pengadilan Niaga** yang relevan
-2. **Putusan terkait kepailitan/PKPU** jika ada
-3. **Implikasi bisnis** dari preseden yang ada
-4. **Saran praktis** untuk pelaku usaha berdasarkan putusan-putusan ini
+    prompt: `Anda adalah Corporate Lawyer AI. Analisis implikasi bisnis dari topik hukum ini. Gunakan kandidat putusan dari katalog lokal (jika ada) sebagai rujukan:
+1. **Implikasi bisnis**
+2. **Saran praktis** untuk pelaku usaha
 Topik: `,
   },
 ];
@@ -72,31 +67,39 @@ interface PrecedentResult {
   error?: boolean;
 }
 
-const NODE_POSITIONS = [
-  { x: 50, y: 50 },
-  { x: 20, y: 20 }, { x: 80, y: 20 },
-  { x: 10, y: 55 }, { x: 90, y: 55 },
-  { x: 25, y: 82 }, { x: 75, y: 82 },
-  { x: 50, y: 92 },
-];
+const JENIS_COLORS: Record<"MK" | "MA", string> = {
+  MK: "#ef4444",
+  MA: "#3b82f6",
+};
 
-const MOCK_NODES = [
-  { label: "Putusan\nUtama", type: "central", color: "#8b5cf6" },
-  { label: "Putusan MA\nTerkait A", type: "related", color: "#3b82f6" },
-  { label: "Putusan MK\nTerkait", type: "mk", color: "#ef4444" },
-  { label: "Pengadilan\nTingkat I", type: "lower", color: "#10b981" },
-  { label: "Pengadilan\nTingkat I", type: "lower", color: "#10b981" },
-  { label: "Putusan MA\nTerkait B", type: "related", color: "#3b82f6" },
-  { label: "Putusan MA\nTerkait C", type: "related", color: "#3b82f6" },
-  { label: "Pengadilan\nTingkat I", type: "lower", color: "#10b981" },
-];
+function formatNodeLabel(p: Putusan) {
+  if (p.jenis === "MK") {
+    return p.nomor.replace("Putusan MK No. ", "MK ").split("/").slice(0, 2).join("/");
+  }
+  if (p.jenis === "MA") {
+    return p.nomor.replace("Putusan MA No. ", "MA ").replace("Putusan MA (PK) No. ", "MA PK ");
+  }
+  return p.nomor.replace("Putusan ", "");
+}
+
+function formatDate(date: string) {
+  return new Date(date).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 export default function PetaPreseden() {
   const [query, setQuery] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [results, setResults] = useState<PrecedentResult[]>([]);
   const [activeResult, setActiveResult] = useState<string | null>(null);
+
+  const [graphData, setGraphData] = useState<{nodes: GraphNode[], edges: GraphEdge[]}>({ nodes: [], edges: [] });
+  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [showMap, setShowMap] = useState(false);
+
   const [copied, setCopied] = useState<string | null>(null);
   const convIdRef = useRef<number | null>(null);
 
@@ -110,8 +113,12 @@ export default function PetaPreseden() {
     return d.id as number;
   }, []);
 
-  const streamResult = useCallback(async (agent: typeof PRECEDENT_AGENTS[0], topic: string, convId: number, idx: number) => {
-    const prompt = `${agent.prompt}${topic}`;
+  const streamResult = useCallback(async (agent: typeof PRECEDENT_AGENTS[0], topic: string, contextNodes: GraphNode[], convId: number, idx: number) => {
+    const matchInfo = contextNodes.length > 0
+      ? `\nKandidat putusan dari katalog lokal yang terkait topik ini:\n${contextNodes.map(n => `- ${n.putusan.nomor} (${n.putusan.jenis}): ${n.putusan.pokok_perkara}`).join('\n')}`
+      : "\n[Tidak ada kandidat putusan spesifik dari katalog lokal untuk topik ini, berikan analisis umum saja]";
+
+    const prompt = `${agent.prompt}${topic}\n${matchInfo}`;
     try {
       const res = await fetch(`/api/assistant/conversations/${convId}/chat`, {
         method: "POST",
@@ -153,13 +160,20 @@ export default function PetaPreseden() {
   const runSearch = async () => {
     if (!query.trim() || isProcessing) return;
     setIsProcessing(true);
-    setShowMap(false);
+
+    // 1. Build Graph from local catalog
+    const graph = buildPrecedentGraph(query);
+    setGraphData(graph);
+    setSelectedNode(null);
+    setShowMap(true);
+
+    // 2. AI processing
     setResults(PRECEDENT_AGENTS.map(a => ({ ...a, content: "", done: false })));
     setActiveResult(PRECEDENT_AGENTS[0].key);
+
     try {
       const convId = await getConvId();
-      await Promise.all(PRECEDENT_AGENTS.map((a, i) => streamResult(a, query, convId, i)));
-      setShowMap(true);
+      await Promise.all(PRECEDENT_AGENTS.map((a, i) => streamResult(a, query, graph.nodes, convId, i)));
     } finally {
       setIsProcessing(false);
     }
@@ -170,6 +184,20 @@ export default function PetaPreseden() {
     setCopied(id);
     setTimeout(() => setCopied(null), 2000);
   };
+
+  const selectedRelations = selectedNode
+    ? graphData.edges
+        .filter((edge) => edge.source === selectedNode.id || edge.target === selectedNode.id)
+        .map((edge) => {
+          const relatedId = edge.source === selectedNode.id ? edge.target : edge.source;
+          return {
+            edge,
+            node: graphData.nodes.find((node) => node.id === relatedId),
+          };
+        })
+        .filter((relation): relation is { edge: GraphEdge; node: GraphNode } => Boolean(relation.node))
+        .slice(0, 3)
+    : [];
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -186,7 +214,7 @@ export default function PetaPreseden() {
               Peta Preseden <span className="text-gradient">Yurisprudensi</span>
             </h1>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Analisis kandidat preseden dari tiga perspektif AI. Visual jaringan masih berupa contoh beta dan bukan hasil knowledge graph putusan produksi.
+              Jaringan kandidat preseden dari katalog lokal, dilengkapi analisis dari tiga perspektif AI.
             </p>
           </div>
 
@@ -231,37 +259,77 @@ export default function PetaPreseden() {
               <div className="lg:col-span-2">
                 <div className="glass-card rounded-2xl p-5 border border-white/10 sticky top-28">
                   <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
-                    <Network className="w-4 h-4 text-primary" /> Contoh Jaringan Preseden (Beta)
+                    <Network className="w-4 h-4 text-primary" /> Jaringan Kandidat Perkara
+                    {graphData.nodes.length > 0 && (
+                      <span className="ml-auto text-[10px] font-normal text-muted-foreground">
+                        {graphData.nodes.length} MA/MK
+                      </span>
+                    )}
                   </h3>
 
-                  <div className="relative h-56 w-full mb-4">
-                    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                      {NODE_POSITIONS.slice(1).map((pos, i) => (
-                        <line key={i} x1="50" y1="50" x2={pos.x} y2={pos.y}
-                          stroke="#8b5cf6" strokeWidth="0.5" strokeOpacity="0.3" strokeDasharray="2,2" />
-                      ))}
-                    </svg>
-                    {MOCK_NODES.map((node, i) => {
-                      const pos = NODE_POSITIONS[i];
+                  <div className="relative h-64 w-full mb-4 bg-black/20 rounded-xl border border-white/5 overflow-hidden">
+                    {graphData.nodes.length === 0 && !isProcessing && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
+                        <Search className="w-8 h-8 text-muted-foreground/30 mb-2" />
+                        <p className="text-xs text-muted-foreground">
+                          Tidak ada preseden relevan ditemukan di katalog lokal.
+                        </p>
+                        <p className="text-[10px] text-muted-foreground/70 mt-1 max-w-[200px]">
+                          AI agent tetap akan mencoba memberikan analisis konseptual secara umum.
+                        </p>
+                      </div>
+                    )}
+
+                    {graphData.nodes.length > 0 && (
+                      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        {graphData.edges.map((edge, i) => {
+                          const sourceNode = graphData.nodes.find(n => n.id === edge.source);
+                          const targetNode = graphData.nodes.find(n => n.id === edge.target);
+                          if (!sourceNode || !targetNode) return null;
+                          return (
+                            <g key={i}>
+                              <line
+                                x1={sourceNode.x} y1={sourceNode.y}
+                                x2={targetNode.x} y2={targetNode.y}
+                                stroke="#ffffff" strokeWidth="0.3" strokeOpacity="0.2" strokeDasharray="1,1"
+                              />
+                            </g>
+                          );
+                        })}
+                      </svg>
+                    )}
+
+                    {graphData.nodes.map((node, i) => {
+                      const isSelected = selectedNode?.id === node.id;
+                      const baseColor = JENIS_COLORS[node.putusan.jenis] || "#8b5cf6";
                       return (
-                        <AnimatePresence key={i}>
+                        <AnimatePresence key={node.id}>
                           {(showMap || i === 0) && (
                             <motion.div
-                              key={i}
                               initial={{ scale: 0, opacity: 0 }}
                               animate={{ scale: 1, opacity: 1 }}
                               transition={{ delay: i * 0.08, type: "spring" }}
-                              className="absolute transform -translate-x-1/2 -translate-y-1/2"
-                              style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
+                              className="absolute transform -translate-x-1/2 -translate-y-1/2 z-10"
+                              style={{ left: `${node.x}%`, top: `${node.y}%` }}
+                              onClick={() => setSelectedNode(node)}
                             >
                               <div
-                                className={`rounded-lg border border-white/20 flex items-center justify-center text-center shadow-lg cursor-pointer hover:scale-110 transition-transform ${
-                                  i === 0 ? "w-16 h-16 text-[8px]" : "w-12 h-12 text-[7px]"
+                                className={`rounded-xl flex items-center justify-center text-center shadow-lg cursor-pointer transition-all duration-300 ${
+                                  isSelected ? "ring-2 ring-primary scale-110 z-20" : "hover:scale-110"
                                 }`}
-                                style={{ backgroundColor: node.color + "20", borderColor: node.color + "50" }}
+                                style={{
+                                  backgroundColor: baseColor + (node.type === "match" ? "30" : "15"),
+                                  borderColor: baseColor + (isSelected ? "90" : "40"),
+                                  borderWidth: "1px",
+                                  width: node.type === "match" ? "4.5rem" : "3.5rem",
+                                  height: node.type === "match" ? "4.5rem" : "3.5rem",
+                                }}
                               >
-                                <span className="text-foreground leading-tight px-0.5" style={{ fontSize: i === 0 ? "7px" : "6px" }}>
-                                  {node.label}
+                                <span
+                                  className="text-foreground leading-tight px-1 font-semibold"
+                                  style={{ fontSize: node.type === "match" ? "10px" : "8px" }}
+                                >
+                                  {formatNodeLabel(node.putusan)}
                                 </span>
                               </div>
                             </motion.div>
@@ -269,48 +337,86 @@ export default function PetaPreseden() {
                         </AnimatePresence>
                       );
                     })}
+
                     {!showMap && isProcessing && (
-                      <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm z-30">
                         <Loader2 className="w-6 h-6 animate-spin text-primary" />
                       </div>
                     )}
                   </div>
 
-                  <div className="space-y-1.5 text-xs">
-                    {[
-                      { color: "#8b5cf6", label: "Putusan Utama (Central)" },
-                      { color: "#3b82f6", label: "Putusan MA Terkait" },
-                      { color: "#ef4444", label: "Putusan MK" },
-                      { color: "#10b981", label: "Putusan Pengadilan Negeri" },
-                    ].map((item, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: item.color }} />
-                        <span className="text-muted-foreground">{item.label}</span>
+                  {selectedNode ? (
+                    <div className="mt-4 pt-4 border-t border-white/10 animate-in fade-in slide-in-from-bottom-2">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full`} style={{ backgroundColor: JENIS_COLORS[selectedNode.putusan.jenis] + "20", color: JENIS_COLORS[selectedNode.putusan.jenis], borderColor: JENIS_COLORS[selectedNode.putusan.jenis] + "50", borderWidth: "1px" }}>
+                            {selectedNode.putusan.jenis}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">{formatDate(selectedNode.putusan.tanggal)}</span>
+                        </div>
+                        <button onClick={() => setSelectedNode(null)} className="text-muted-foreground hover:text-foreground">
+                          <X className="w-4 h-4" />
+                        </button>
                       </div>
-                    ))}
-                  </div>
+                      <p className="text-xs font-mono text-muted-foreground mb-2">{selectedNode.putusan.nomor}</p>
+                      <p className="text-sm font-semibold mb-1 line-clamp-2" title={selectedNode.putusan.pokok_perkara}>{selectedNode.putusan.pokok_perkara}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-3 mb-3">{selectedNode.putusan.amar}</p>
 
-                  <div className="mt-4 pt-4 border-t border-white/10">
-                    <p className="mb-3 text-[10px] leading-relaxed text-amber-300">
-                      Node di atas hanya menunjukkan bentuk visualisasi. Verifikasi setiap nomor putusan pada database resmi MA/MK.
-                    </p>
-                    <a
-                      href="https://putusan3.mahkamahagung.go.id/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-xs text-primary hover:underline"
-                    >
-                      <ExternalLink className="w-3 h-3" /> Cari di Direktori Putusan MA
-                    </a>
-                    <a
-                      href="https://www.mkri.id/perkara/persidangan/putusan"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-xs text-primary hover:underline mt-1.5"
-                    >
-                      <ExternalLink className="w-3 h-3" /> Cari di Database Putusan MK
-                    </a>
-                  </div>
+                      {selectedRelations.length > 0 && (
+                        <div className="mb-3 space-y-1.5">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            Relasi yang dapat dijelaskan
+                          </p>
+                          {selectedRelations.map(({ edge, node }) => (
+                            <button
+                              key={`${edge.source}-${edge.target}`}
+                              type="button"
+                              onClick={() => setSelectedNode(node)}
+                              className="flex w-full items-start gap-2 rounded-lg border border-white/10 bg-white/5 p-2 text-left hover:bg-white/10"
+                            >
+                              <Link2 className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
+                              <span className="min-w-0">
+                                <span className="block truncate text-[10px] text-foreground">{node.putusan.nomor}</span>
+                                <span className="block text-[9px] text-muted-foreground">{edge.label}</span>
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-start gap-1.5 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[10px]">
+                          <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                          <p>Kandidat dari katalog lokal. <strong>Perlu verifikasi sumber resmi</strong> untuk memastikan nomor, amar, dan perkembangan setelah putusan.</p>
+                        </div>
+                        <a
+                          href={selectedNode.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium transition-colors"
+                        >
+                          <ExternalLink className="w-3 h-3" /> Buka di Direktori Resmi
+                        </a>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-4 pt-4 border-t border-white/10">
+                      <div className="space-y-1.5 text-xs mb-4">
+                        {[
+                          { color: JENIS_COLORS.MK, label: "Mahkamah Konstitusi (MK)" },
+                          { color: JENIS_COLORS.MA, label: "Mahkamah Agung (MA)" },
+                        ].map((item, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: item.color }} />
+                            <span className="text-muted-foreground">{item.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-[10px] leading-relaxed text-muted-foreground">
+                        Garis hanya menunjukkan isu hukum yang sama. Pilih node untuk melihat detail dan memeriksa sumber resmi.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -337,12 +443,12 @@ export default function PetaPreseden() {
                           <p className="text-[11px] text-muted-foreground">{agent.role}</p>
                           {!agent.done ? (
                             <p className="text-xs text-primary flex items-center gap-1 mt-0.5">
-                              <Loader2 className="w-3 h-3 animate-spin" /> Memetakan preseden...
+                              <Loader2 className="w-3 h-3 animate-spin" /> Menganalisis...
                             </p>
                           ) : agent.error ? (
                             <p className="text-xs text-red-400 mt-0.5">Gagal</p>
                           ) : (
-                            <p className="text-xs text-emerald-400 mt-0.5">✓ Peta selesai</p>
+                            <p className="text-xs text-emerald-400 mt-0.5">✓ Analisis selesai</p>
                           )}
                         </div>
                       </div>
@@ -369,7 +475,7 @@ export default function PetaPreseden() {
                               <MarkdownRenderer content={agent.content} />
                             ) : (
                               <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                                <Loader2 className="w-4 h-4 animate-spin" /> Memetakan preseden untuk topik ini...
+                                <Loader2 className="w-4 h-4 animate-spin" /> Menyusun analisis...
                               </div>
                             )}
                           </div>
