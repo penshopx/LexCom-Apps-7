@@ -22,6 +22,7 @@ import {
   Plus,
   Network,
   GitMerge,
+  RotateCcw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -55,6 +56,7 @@ interface AgenticTurn {
   synthesisStatus: "none" | "streaming" | "done";
   orchestrating: boolean;
   status: "streaming" | "done";
+  retryText?: string;
 }
 
 interface StreamEvent {
@@ -192,11 +194,14 @@ export default function Chatbots() {
           signal: abortRef.current.signal,
         });
 
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         if (!response.body) throw new Error("No response body");
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
+        let receivedContent = false;
+        let streamFailed = false;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -243,6 +248,7 @@ export default function Chatbots() {
                     return { ...t, contributions: [...t.contributions, newContrib] };
 
                   } else if (event.type === "agent_chunk") {
+                    if (event.content) receivedContent = true;
                     return {
                       ...t,
                       contributions: t.contributions.map((c) =>
@@ -264,6 +270,7 @@ export default function Chatbots() {
                     return { ...t, synthesisStatus: "streaming" };
 
                   } else if (event.type === "synthesis_chunk") {
+                    if (event.content) receivedContent = true;
                     return { ...t, synthesis: t.synthesis + (event.content ?? "") };
 
                   } else if (event.type === "synthesis_done") {
@@ -273,10 +280,12 @@ export default function Chatbots() {
                     return { ...t, status: "done", orchestrating: false };
 
                   } else if (event.type === "error") {
+                    streamFailed = true;
                     return {
                       ...t,
                       status: "done",
                       orchestrating: false,
+                      retryText: text.trim(),
                       contributions: [
                         {
                           agentKey: "error",
@@ -296,9 +305,60 @@ export default function Chatbots() {
             } catch {}
           }
         }
+
+        if (!streamFailed && !receivedContent) {
+          setTurns((prev) =>
+            prev.map((turn) =>
+              turn.id === agenticTurnId
+                ? {
+                    ...turn,
+                    status: "done",
+                    orchestrating: false,
+                    retryText: text.trim(),
+                    contributions: [
+                      {
+                        agentKey: "error",
+                        agentName: "Respons tidak tersedia",
+                        emoji: "❌",
+                        color: "#ef4444",
+                        content: "AI tidak menghasilkan jawaban. Silakan coba lagi.",
+                        status: "done",
+                        collapsed: false,
+                      },
+                    ],
+                  }
+                : turn
+            )
+          );
+        }
       } catch (err) {
-        if ((err as Error).name !== "AbortError") {
+        if ((err as Error).name === "AbortError") {
+          setTurns((prev) => prev.filter((turn) => turn.id !== agenticTurnId));
+        } else {
           toast({ title: "Koneksi terputus", variant: "destructive" });
+          setTurns((prev) =>
+            prev.map((turn) =>
+              turn.id === agenticTurnId
+                ? {
+                    ...turn,
+                    status: "done",
+                    orchestrating: false,
+                    retryText: text.trim(),
+                    contributions: [
+                      {
+                        agentKey: "error",
+                        agentName: "Koneksi terputus",
+                        emoji: "❌",
+                        color: "#ef4444",
+                        content: "Koneksi ke AI terputus. Silakan coba lagi.",
+                        status: "done",
+                        collapsed: false,
+                      },
+                    ],
+                  }
+                : turn
+            )
+          );
         }
       } finally {
         setIsStreaming(false);
@@ -520,6 +580,10 @@ export default function Chatbots() {
                         key={turn.id}
                         turn={turn}
                         onToggleCollapse={(agentKey) => toggleAgentCollapse(turn.id, agentKey)}
+                        onRetry={(retryText) => {
+                          setTurns((prev) => prev.filter((item) => item.id !== turn.id));
+                          void sendMessage(retryText);
+                        }}
                       />
                     )
                   )
@@ -634,9 +698,11 @@ function UserBubble({ content }: { content: string }) {
 function AgenticResponse({
   turn,
   onToggleCollapse,
+  onRetry,
 }: {
   turn: AgenticTurn;
   onToggleCollapse: (agentKey: string) => void;
+  onRetry: (text: string) => void;
 }) {
   return (
     <motion.div
@@ -692,6 +758,18 @@ function AgenticResponse({
         {/* Synthesis */}
         {(turn.synthesisStatus === "streaming" || turn.synthesisStatus === "done") && (
           <SynthesisCard synthesis={turn.synthesis} status={turn.synthesisStatus} />
+        )}
+        {turn.retryText && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onRetry(turn.retryText!)}
+            className="h-8 gap-2 border-red-500/30 text-red-300 hover:bg-red-500/10"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            Coba Lagi
+          </Button>
         )}
       </div>
     </motion.div>

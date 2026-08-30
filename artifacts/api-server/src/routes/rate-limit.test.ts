@@ -184,6 +184,44 @@ describe("rate-limit SSE error events — /api/openai route", () => {
   });
 });
 
+describe("empty AI response handling — /api/openai route", () => {
+  let app: Application;
+
+  beforeEach(async () => {
+    batchShouldFail = false;
+    batchResolveWith = {
+      async *[Symbol.asyncIterator]() {
+        // The provider completes successfully but never emits content.
+      },
+    };
+    vi.resetModules();
+    const { default: openaiRouter } = await import("./openai");
+    app = buildApp(openaiRouter);
+  });
+
+  it("emits a retryable error instead of saving an empty assistant message", async () => {
+    const res = await request(app)
+      .post("/api/openai/conversations/1/messages")
+      .send({ content: "Jelaskan wanprestasi" })
+      .buffer(true)
+      .parse((stream, cb) => {
+        let data = "";
+        stream.on("data", (chunk: Buffer) => { data += chunk.toString(); });
+        stream.on("end", () => cb(null, data));
+      });
+
+    const events = parseSseEvents(res.body as string);
+    const errorEvent = events.find((event) => event.type === "error");
+
+    expect(errorEvent).toMatchObject({
+      type: "error",
+      retryable: true,
+    });
+    expect(errorEvent?.message).toMatch(/tidak menghasilkan jawaban/i);
+    expect(events.some((event) => event.done === true)).toBe(false);
+  });
+});
+
 describe("rate-limit SSE error events — /api/assistant route", () => {
   let app: Application;
 

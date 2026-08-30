@@ -10,6 +10,10 @@ import {
 
 const router: IRouter = Router();
 
+function createSseError(message: string) {
+  return { type: "error", message, error: message, retryable: true };
+}
+
 /**
  * Wraps a single OpenAI call with automatic retry + exponential backoff on
  * rate-limit errors (429). Uses the shared batchProcess utility so the retry
@@ -466,7 +470,7 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
       const message = isRateLimitError(err)
         ? "Batas permintaan AI tercapai. Silakan coba lagi dalam beberapa detik."
         : "Gagal terhubung ke AI. Silakan coba lagi.";
-      res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
+      res.write(`data: ${JSON.stringify(createSseError(message))}\n\n`);
       res.end();
       return;
     }
@@ -484,7 +488,14 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
       const message = isRateLimitError(err)
         ? "Batas permintaan AI tercapai saat streaming. Silakan coba lagi."
         : "Koneksi terputus. Silakan coba lagi.";
-      res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
+      res.write(`data: ${JSON.stringify(createSseError(message))}\n\n`);
+      res.end();
+      return;
+    }
+
+    if (!fullResponse.trim()) {
+      req.log.warn({ conversationId: id }, "Agent returned an empty response");
+      res.write(`data: ${JSON.stringify(createSseError("AI tidak menghasilkan jawaban. Silakan coba lagi."))}\n\n`);
       res.end();
       return;
     }
@@ -502,7 +513,7 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
     const message = isRateLimitError(err)
       ? "Batas permintaan AI tercapai. Silakan coba lagi dalam beberapa detik."
       : "Internal server error";
-    res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
+    res.write(`data: ${JSON.stringify(createSseError(message))}\n\n`);
     res.end();
   }
 });

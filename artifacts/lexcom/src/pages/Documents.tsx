@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileText, Save, Copy, Trash2, Loader2, Sparkles, Wand2, FileCode2 } from "lucide-react";
+import { FileText, Save, Copy, Trash2, Loader2, Sparkles, Wand2, FileCode2, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -52,6 +52,7 @@ export default function Documents() {
   
   const [generatedContent, setGeneratedContent] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
 
   const { data: documents, isLoading: isLoadingDocs } = useQuery({
     queryKey: ["documents"],
@@ -96,8 +97,8 @@ export default function Documents() {
     }
   });
 
-  const handleGenerate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleGenerate = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!formData.description.trim()) {
       toast({ title: "Error", description: "Deskripsi kasus tidak boleh kosong", variant: "destructive" });
       return;
@@ -105,6 +106,7 @@ export default function Documents() {
 
     setIsGenerating(true);
     setGeneratedContent("");
+    setGenerationError(null);
 
     try {
       const res = await fetch("/api/documents/generate", {
@@ -120,6 +122,7 @@ export default function Documents() {
       if (!reader) throw new Error("No stream");
       const decoder = new TextDecoder();
       let buffer = "";
+      let fullContent = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -132,15 +135,13 @@ export default function Documents() {
             try {
               const data = JSON.parse(line.slice(6));
               if (data.content) {
-                setGeneratedContent(prev => prev + data.content);
+                fullContent += data.content;
+                setGeneratedContent(fullContent);
               }
               if (data.error) {
                 toast({ title: "Gagal Membuat Dokumen", description: data.error, variant: "destructive" });
-                setIsGenerating(false);
+                setGenerationError(data.error);
                 return;
-              }
-              if (data.done) {
-                setIsGenerating(false);
               }
             } catch (e) {
               // Ignore parse error
@@ -148,8 +149,13 @@ export default function Documents() {
           }
         }
       }
+      if (!fullContent.trim()) {
+        setGenerationError("AI tidak menghasilkan dokumen. Silakan coba lagi.");
+      }
     } catch (err) {
       toast({ title: "Error", description: "Gagal membuat dokumen", variant: "destructive" });
+      setGenerationError("Koneksi ke AI terputus. Silakan coba lagi.");
+    } finally {
       setIsGenerating(false);
     }
   };
@@ -306,6 +312,22 @@ export default function Documents() {
                 </Button>
               </div>
             </div>
+            {generationError && (
+              <div className="m-4 mb-0 flex items-center justify-between gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3">
+                <p className="text-sm text-red-200">{generationError}</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void handleGenerate()}
+                  disabled={isGenerating}
+                  className="shrink-0 gap-2 border-red-500/30 text-red-200 hover:bg-red-500/10"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Coba Lagi
+                </Button>
+              </div>
+            )}
             
             <div className="flex-1 bg-background/30 p-6 relative">
               {!generatedContent && !isGenerating ? (

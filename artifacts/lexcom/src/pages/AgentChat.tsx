@@ -5,7 +5,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Bot, Loader2, MessageSquare, ArrowLeft, Sparkles } from "lucide-react";
+import { Send, Bot, Loader2, MessageSquare, ArrowLeft, Sparkles, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
@@ -282,7 +282,13 @@ export default function AgentChat() {
   const [, navigate] = useLocation();
 
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<{ role: string; content: string; id: string }[]>([]);
+  const [messages, setMessages] = useState<{
+    role: string;
+    content: string;
+    id: string;
+    error?: boolean;
+    retryText?: string;
+  }[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [started, setStarted] = useState(false);
@@ -330,9 +336,10 @@ export default function AgentChat() {
     }
   };
 
-  const sendMessage = async () => {
-    if (!input.trim() || !conversationId || isTyping) return;
-    const userMsg = { id: `u-${++msgCounter.current}`, role: "user", content: input.trim() };
+  const sendMessage = async (textOverride?: string) => {
+    const text = typeof textOverride === "string" ? textOverride.trim() : input.trim();
+    if (!text || !conversationId || isTyping) return;
+    const userMsg = { id: `u-${++msgCounter.current}`, role: "user", content: text };
     setMessages(prev => [...prev, userMsg]);
     setInput("");
     setIsTyping(true);
@@ -355,6 +362,8 @@ export default function AgentChat() {
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let receivedContent = "";
+      let streamFailed = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -367,11 +376,15 @@ export default function AgentChat() {
             try {
               const data = JSON.parse(line.slice(6));
               if (data.content) {
+                receivedContent += data.content;
                 setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: m.content + data.content } : m));
               }
               if (data.error) {
+                streamFailed = true;
                 setMessages(prev => prev.map(m =>
-                  m.id === aiMsgId ? { ...m, content: `❌ ${data.error}` } : m
+                  m.id === aiMsgId
+                    ? { ...m, content: data.error, error: true, retryText: userMsg.content }
+                    : m
                 ));
                 return;
               }
@@ -379,9 +392,30 @@ export default function AgentChat() {
           }
         }
       }
+      if (!streamFailed && !receivedContent.trim()) {
+        setMessages(prev => prev.map(m =>
+          m.id === aiMsgId
+            ? {
+                ...m,
+                content: "AI tidak menghasilkan jawaban. Silakan coba lagi.",
+                error: true,
+                retryText: userMsg.content,
+              }
+            : m
+        ));
+      }
     } catch {
       toast({ title: "Gagal mengirim pesan", description: "Silakan coba lagi.", variant: "destructive" });
-      setMessages(prev => prev.filter(m => m.id !== aiMsgId));
+      setMessages(prev => prev.map(m =>
+        m.id === aiMsgId
+          ? {
+              ...m,
+              content: "Koneksi ke AI terputus. Silakan coba lagi.",
+              error: true,
+              retryText: userMsg.content,
+            }
+          : m
+      ));
     } finally {
       setIsTyping(false);
     }
@@ -460,12 +494,31 @@ export default function AgentChat() {
                     <div className={`max-w-[75%] px-4 py-3 rounded-2xl ${
                       msg.role === "user"
                         ? "bg-primary text-white rounded-tr-sm text-sm leading-relaxed"
-                        : "bg-white/5 border border-white/10 text-foreground rounded-tl-sm"
+                        : msg.error
+                          ? "bg-red-500/10 border border-red-500/30 text-foreground rounded-tl-sm"
+                          : "bg-white/5 border border-white/10 text-foreground rounded-tl-sm"
                     }`}>
                       {msg.role === "user" ? (
                         msg.content
                       ) : msg.content ? (
-                        <MarkdownRenderer content={msg.content} className="text-sm" />
+                        <div className="space-y-3">
+                          <MarkdownRenderer content={msg.content} className="text-sm" />
+                          {msg.error && msg.retryText && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setMessages(prev => prev.filter(item => item.id !== msg.id));
+                                void sendMessage(msg.retryText);
+                              }}
+                              className="h-8 gap-2 border-red-500/30 text-red-300 hover:bg-red-500/10"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              Coba Lagi
+                            </Button>
+                          )}
+                        </div>
                       ) : (
                         <span className="flex gap-1 items-center text-muted-foreground text-sm">
                           <Loader2 className="w-3 h-3 animate-spin" /> Sedang mengetik...
@@ -485,13 +538,13 @@ export default function AgentChat() {
                 <Input
                   value={input}
                   onChange={e => setInput(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendMessage()}
+                  onKeyDown={e => e.key === "Enter" && !e.shiftKey && void sendMessage()}
                   placeholder={`Tanyakan seputar ${agent.category.toLowerCase()}...`}
                   className="flex-1 bg-white/5 border-white/10 rounded-xl"
                   disabled={isTyping}
                 />
                 <Button
-                  onClick={sendMessage}
+                  onClick={() => void sendMessage()}
                   disabled={!input.trim() || isTyping}
                   className="rounded-xl px-4 bg-primary hover:bg-primary/90"
                 >

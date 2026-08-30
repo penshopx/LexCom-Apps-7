@@ -28,6 +28,8 @@ interface ChatMessage {
   agent?: string;
   agentLabel?: string;
   action?: string;
+  error?: boolean;
+  retryText?: string;
   timestamp: Date;
 }
 
@@ -161,6 +163,19 @@ export default function LexBot() {
       const assistantMsgId = crypto.randomUUID();
       let fullContent = "";
       let resolvedAgent = "orchestrator";
+      let streamFailed = false;
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: assistantMsgId,
+          role: "assistant",
+          content: "",
+          agent: resolvedAgent,
+          agentLabel: AGENT_DISPLAY[resolvedAgent]?.label ?? "Chaesa Lexbot",
+          timestamp: new Date(),
+        },
+      ]);
 
       try {
         const convId = await initConversation();
@@ -177,23 +192,12 @@ export default function LexBot() {
           }
         );
 
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         if (!response.body) throw new Error("No response body");
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
-
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: assistantMsgId,
-            role: "assistant",
-            content: "",
-            agent: resolvedAgent,
-            agentLabel: AGENT_DISPLAY[resolvedAgent]?.label ?? "Chaesa Lexbot",
-            timestamp: new Date(),
-          },
-        ]);
 
         while (true) {
           const { done, value } = await reader.read();
@@ -263,11 +267,17 @@ export default function LexBot() {
                 );
 
               } else if (event.type === "error") {
+                streamFailed = true;
                 setAgentStatus(null);
                 setMessages((prev) =>
                   prev.map((m) =>
                     m.id === assistantMsgId
-                      ? { ...m, content: `❌ ${event.message ?? "Terjadi kesalahan"}` }
+                      ? {
+                          ...m,
+                          content: event.message ?? "Terjadi kesalahan saat memproses jawaban.",
+                          error: true,
+                          retryText: text.trim(),
+                        }
                       : m
                   )
                 );
@@ -275,12 +285,36 @@ export default function LexBot() {
             } catch {}
           }
         }
-      } catch (err) {
-        if ((err as Error).name !== "AbortError") {
+
+        if (!streamFailed && !fullContent.trim()) {
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantMsgId
-                ? { ...m, content: "❌ Terjadi kesalahan koneksi. Silakan coba lagi." }
+                ? {
+                    ...m,
+                    content: "AI tidak menghasilkan jawaban. Silakan coba lagi.",
+                    error: true,
+                    retryText: text.trim(),
+                  }
+                : m
+            )
+          );
+        }
+      } catch (err) {
+        if ((err as Error).name === "AbortError") {
+          setMessages((prev) =>
+            prev.filter((m) => m.id !== assistantMsgId || Boolean(m.content.trim()))
+          );
+        } else {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMsgId
+                ? {
+                    ...m,
+                    content: "Terjadi kesalahan koneksi. Silakan coba lagi.",
+                    error: true,
+                    retryText: text.trim(),
+                  }
                 : m
             )
           );
@@ -402,7 +436,14 @@ export default function LexBot() {
             style={{ minHeight: 0 }}
           >
             {messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} />
+              <MessageBubble
+                key={msg.id}
+                message={msg}
+                onRetry={(retryText) => {
+                  setMessages((prev) => prev.filter((item) => item.id !== msg.id));
+                  void sendMessage(retryText);
+                }}
+              />
             ))}
 
             {agentStatus && (
@@ -479,7 +520,13 @@ export default function LexBot() {
   );
 }
 
-function MessageBubble({ message }: { message: ChatMessage }) {
+function MessageBubble({
+  message,
+  onRetry,
+}: {
+  message: ChatMessage;
+  onRetry: (text: string) => void;
+}) {
   const isUser = message.role === "user";
   const agentKey = message.agent ?? "orchestrator";
   const agentMeta = AGENT_DISPLAY[agentKey] ?? AGENT_DISPLAY.orchestrator;
@@ -520,9 +567,27 @@ function MessageBubble({ message }: { message: ChatMessage }) {
             </Badge>
           )}
         </div>
-        <div className="bg-card border border-border/60 rounded-2xl rounded-tl-sm px-4 py-3">
+        <div className={`rounded-2xl rounded-tl-sm px-4 py-3 ${
+          message.error
+            ? "bg-red-500/10 border border-red-500/30"
+            : "bg-card border border-border/60"
+        }`}>
           {message.content ? (
-            <MarkdownRenderer content={message.content} className="text-sm" />
+            <div className="space-y-3">
+              <MarkdownRenderer content={message.content} className="text-sm" />
+              {message.error && message.retryText && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onRetry(message.retryText!)}
+                  className="h-8 gap-2 border-red-500/30 text-red-300 hover:bg-red-500/10"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Coba Lagi
+                </Button>
+              )}
+            </div>
           ) : (
             <div className="flex items-center gap-2 text-muted-foreground">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
