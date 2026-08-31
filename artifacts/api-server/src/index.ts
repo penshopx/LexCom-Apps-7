@@ -1,6 +1,7 @@
 import { execSync } from "child_process";
-import app, { setReady } from "./app";
+import app, { completeStartup, getStartupError, setStartupError } from "./app";
 import { logger } from "./lib/logger";
+import { initializeServer } from "./startup";
 
 const rawPort = process.env["PORT"];
 
@@ -43,12 +44,24 @@ if (process.env["NODE_ENV"] !== "production") {
 const server = app.listen(port);
 
 server.once("listening", () => {
-  setReady(true);
-  logger.info({ port }, "Migrations complete; server is ready to accept requests");
+  void completeStartup(initializeServer).then((ready) => {
+    if (ready) {
+      logger.info(
+        { port },
+        "Startup checks complete; server is ready to accept requests",
+      );
+      return;
+    }
+
+    logger.error(
+      { err: getStartupError(), port },
+      "API server startup checks failed; server will remain not ready",
+    );
+  });
 });
 
 server.once("error", (err) => {
-  setReady(false);
+  setStartupError(err);
   logger.fatal({ err, port }, "API server failed to start");
   process.exit(1);
 });

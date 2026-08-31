@@ -1,4 +1,9 @@
-import express, { type Express, type Request, type Response, type NextFunction } from "express";
+import express, {
+  type Express,
+  type Request,
+  type Response,
+  type NextFunction,
+} from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
@@ -10,9 +15,45 @@ import { pool } from "@workspace/db";
 const app: Express = express();
 
 let isReady = false;
+let startupError: string | null = null;
 
 export function setReady(value: boolean): void {
   isReady = value;
+  startupError = null;
+}
+
+function formatStartupError(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return String(error);
+}
+
+export function setStartupError(error: unknown): void {
+  isReady = false;
+  startupError = formatStartupError(error);
+}
+
+export function getStartupError(): string | null {
+  return startupError;
+}
+
+/**
+ * Run the final startup gate. Keeping this separate from the listener event
+ * makes it impossible for a failed initialization promise to become an
+ * unhandled rejection while leaving the API marked ready.
+ */
+export async function completeStartup(
+  initialize: () => Promise<void>,
+): Promise<boolean> {
+  try {
+    await initialize();
+    setReady(true);
+    return true;
+  } catch (error) {
+    setStartupError(error);
+    return false;
+  }
 }
 
 const DEFAULT_DB_PING_CACHE_TTL_MS = 2000;
@@ -50,9 +91,22 @@ async function pingDatabase(): Promise<boolean> {
   return result;
 }
 
+export async function verifyDatabaseConnection(): Promise<void> {
+  if (!(await pingDatabase())) {
+    throw new Error("database unreachable during startup");
+  }
+}
+
+function getNotReadyResponse(): { status: string; error?: string } {
+  return {
+    status: "not ready",
+    ...(startupError ? { error: startupError } : {}),
+  };
+}
+
 app.get("/health", async (_req: Request, res: Response) => {
   if (!isReady) {
-    res.status(503).json({ status: "not ready" });
+    res.status(503).json(getNotReadyResponse());
     return;
   }
   const dbOk = await pingDatabase();
@@ -65,7 +119,7 @@ app.get("/health", async (_req: Request, res: Response) => {
 
 app.use((_req: Request, res: Response, next: NextFunction) => {
   if (!isReady) {
-    res.status(503).json({ status: "not ready" });
+    res.status(503).json(getNotReadyResponse());
     return;
   }
   next();

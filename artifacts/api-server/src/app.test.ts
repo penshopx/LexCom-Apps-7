@@ -34,7 +34,12 @@ vi.mock("@workspace/db", () => ({
   db: {},
 }));
 
-const { default: app, setReady, resetDbPingCache } = await import("./app");
+const {
+  default: app,
+  completeStartup,
+  setReady,
+  resetDbPingCache,
+} = await import("./app");
 
 describe("readiness gate", () => {
   beforeEach(() => {
@@ -47,6 +52,28 @@ describe("readiness gate", () => {
     const res = await request(app).get("/health");
     expect(res.status).toBe(503);
     expect(res.body).toMatchObject({ status: "not ready" });
+  });
+
+  it("surfaces initialization failures and stays not ready", async () => {
+    const initialized = await completeStartup(async () => {
+      throw new Error("OIDC discovery failed");
+    });
+
+    expect(initialized).toBe(false);
+    const res = await request(app).get("/health");
+
+    expect(res.status).toBe(503);
+    expect(res.body).toMatchObject({
+      status: "not ready",
+      error: "OIDC discovery failed",
+    });
+
+    const publicHealthRes = await request(app).get("/api/healthz");
+    expect(publicHealthRes.status).toBe(503);
+    expect(publicHealthRes.body).toMatchObject({
+      status: "not ready",
+      error: "OIDC discovery failed",
+    });
   });
 
   it("returns 200 on /health when ready", async () => {
