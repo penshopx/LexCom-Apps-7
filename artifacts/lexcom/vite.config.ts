@@ -1,4 +1,5 @@
-import { defineConfig } from "vite";
+import { gzipSync } from "node:zlib";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
@@ -40,12 +41,62 @@ const offlineFallback = {
   },
 };
 
+const initialJavaScriptGzipBudget = 85 * 1024;
+
+function enforceInitialJavaScriptBudget(): Plugin {
+  return {
+    name: "lexcom-initial-javascript-budget",
+    generateBundle(_options, bundle) {
+      const pendingFiles = Object.values(bundle)
+        .filter((output) => output.type === "chunk" && output.isEntry)
+        .map((chunk) => chunk.fileName);
+      const visitedFiles = new Set<string>();
+      let rawBytes = 0;
+      let gzipBytes = 0;
+
+      while (pendingFiles.length > 0) {
+        const fileName = pendingFiles.pop();
+
+        if (!fileName || visitedFiles.has(fileName)) {
+          continue;
+        }
+
+        visitedFiles.add(fileName);
+        const output = bundle[fileName];
+
+        if (!output || output.type !== "chunk") {
+          continue;
+        }
+
+        rawBytes += Buffer.byteLength(output.code);
+        gzipBytes += gzipSync(output.code).byteLength;
+        pendingFiles.push(...output.imports);
+      }
+
+      const rawKilobytes = (rawBytes / 1024).toFixed(1);
+      const gzipKilobytes = (gzipBytes / 1024).toFixed(1);
+      const budgetKilobytes = (initialJavaScriptGzipBudget / 1024).toFixed(0);
+
+      this.info(
+        `Initial JavaScript: ${rawKilobytes} KiB raw, ${gzipKilobytes} KiB gzip (budget ${budgetKilobytes} KiB gzip).`,
+      );
+
+      if (gzipBytes > initialJavaScriptGzipBudget) {
+        this.error(
+          `Initial JavaScript is ${gzipKilobytes} KiB gzip, exceeding the ${budgetKilobytes} KiB budget.`,
+        );
+      }
+    },
+  };
+}
+
 export default defineConfig({
   base: basePath,
   plugins: [
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
+    enforceInitialJavaScriptBudget(),
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg", "icon-192.png", "icon-512.png"],
@@ -128,6 +179,7 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    chunkSizeWarningLimit: 500,
   },
   server: {
     port,

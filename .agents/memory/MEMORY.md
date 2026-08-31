@@ -3,3 +3,4 @@
 - [Vite workflow restarts](vite-workflow-restarts.md) — if LexCom restarts on 22530, an orphaned Vite process may still own the configured 22529 port
 - [Merged route integrity](merged-route-integrity.md) — after merged API route work, verify both build and endpoint-specific tests; route boundaries and test URLs can drift independently
 - [PWA offline fallback](pwa-offline-fallback.md) — Workbox 7 needs a precache fallback plugin; disable Vite PWA's default SPA fallback so it cannot shadow offline navigation
+- [Route splitting strategy](route-splitting-strategy.md) — prefer route-level lazy imports; broad vendor chunks increase LexCom's startup payload despite smaller individual chunks
