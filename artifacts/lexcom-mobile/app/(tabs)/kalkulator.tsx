@@ -11,50 +11,50 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
+import {
+  calculateBphtb,
+  calculatePesangon,
+  MAX_BPHTB_RATE_PERCENT,
+  TERMINATION_REASONS,
+  TERMINATION_RULES,
+  type TerminationReason,
+} from '@/lib/legalCalculators';
 
 function formatRp(n: number): string {
   return 'Rp ' + Math.round(n).toLocaleString('id-ID');
 }
 
-// ─── Pesangon Calculator ─────────────────────────────────────────────────────
 function KalkulatorPesangon() {
   const colors = useColors();
   const [gajiStr, setGajiStr] = useState('');
   const [tahunStr, setTahunStr] = useState('');
-  const [result, setResult] = useState<{ pesangon: number; penghargaan: number; total: number } | null>(null);
+  const [reason, setReason] = useState<TerminationReason>('company_standard');
+  const [result, setResult] = useState<{
+    pesangon: number;
+    penghargaan: number;
+    total: number;
+    severanceMultiplier: number;
+    serviceAwardMultiplier: number;
+    reasonLabel: string;
+  } | null>(null);
 
   function calculate() {
     const gaji = parseFloat(gajiStr.replace(/[^\d.]/g, ''));
     const tahun = parseFloat(tahunStr);
-    if (!gaji || !tahun || tahun < 0) return;
+    if (!gaji || Number.isNaN(tahun) || tahun < 0) return;
 
-    // Pesangon per PP 35/2021
-    let koefPesangon = 0;
-    if (tahun < 1) koefPesangon = 1;
-    else if (tahun < 2) koefPesangon = 2;
-    else if (tahun < 3) koefPesangon = 3;
-    else if (tahun < 4) koefPesangon = 4;
-    else if (tahun < 5) koefPesangon = 5;
-    else if (tahun < 6) koefPesangon = 6;
-    else if (tahun < 7) koefPesangon = 7;
-    else if (tahun < 8) koefPesangon = 8;
-    else koefPesangon = 9;
-
-    // Penghargaan masa kerja
-    let koefPenghargaan = 0;
-    if (tahun >= 3 && tahun < 6) koefPenghargaan = 2;
-    else if (tahun >= 6 && tahun < 9) koefPenghargaan = 3;
-    else if (tahun >= 9 && tahun < 12) koefPenghargaan = 4;
-    else if (tahun >= 12 && tahun < 15) koefPenghargaan = 5;
-    else if (tahun >= 15 && tahun < 18) koefPenghargaan = 6;
-    else if (tahun >= 18 && tahun < 21) koefPenghargaan = 7;
-    else if (tahun >= 21 && tahun < 24) koefPenghargaan = 8;
-    else if (tahun >= 24) koefPenghargaan = 10;
-
-    const pesangon = gaji * koefPesangon;
-    const penghargaan = gaji * koefPenghargaan;
-    setResult({ pesangon, penghargaan, total: pesangon + penghargaan });
+    const selectedReason = TERMINATION_RULES[reason];
+    const calculation = calculatePesangon(gaji, tahun, reason);
+    setResult({
+      pesangon: calculation.severance,
+      penghargaan: calculation.serviceAward,
+      total: calculation.total,
+      severanceMultiplier: calculation.severanceMultiplier,
+      serviceAwardMultiplier: calculation.serviceAwardMultiplier,
+      reasonLabel: selectedReason.label,
+    });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }
 
@@ -64,8 +64,40 @@ function KalkulatorPesangon() {
       <View style={styles.calcInner}>
         <Text style={[styles.calcTitle, { color: colors.foreground }]}>Kalkulator Pesangon</Text>
         <Text style={[styles.calcSub, { color: colors.mutedForeground }]}>
-          PP 35/2021 — PHK oleh perusahaan
+          PP 35/2021 — sesuaikan dengan alasan berakhirnya hubungan kerja
         </Text>
+        <View style={styles.optionGroup}>
+          <Text style={[styles.label, { color: colors.mutedForeground }]}>Alasan berakhirnya hubungan kerja</Text>
+          <View style={styles.optionRow}>
+            {TERMINATION_REASONS.map((optionReason) => {
+              const option = TERMINATION_RULES[optionReason];
+              const isSelected = reason === optionReason;
+              return (
+                <Pressable
+                  key={optionReason}
+                  onPress={() => {
+                    setReason(optionReason);
+                    setResult(null);
+                  }}
+                  style={[
+                    styles.option,
+                    {
+                      backgroundColor: isSelected ? '#10b981' : colors.muted,
+                      borderColor: isSelected ? '#10b981' : colors.border,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.optionText, { color: isSelected ? '#fff' : colors.mutedForeground }]}>
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Text style={[styles.helperText, { color: colors.mutedForeground }]}>
+            {TERMINATION_RULES[reason].explanation}
+          </Text>
+        </View>
         <View style={styles.inputGroup}>
           <Text style={[styles.label, { color: colors.mutedForeground }]}>Gaji Bulanan (Rp)</Text>
           <TextInput
@@ -96,13 +128,17 @@ function KalkulatorPesangon() {
         </Pressable>
         {result && (
           <View style={[styles.resultBox, { backgroundColor: colors.muted }]}>
+            <Text style={[styles.resultContext, { color: colors.mutedForeground }]}>
+              {result.reasonLabel} · pesangon {result.severanceMultiplier.toLocaleString('id-ID')}× · UPMK {result.serviceAwardMultiplier.toLocaleString('id-ID')}×
+            </Text>
             <ResultRow label="Pesangon" value={formatRp(result.pesangon)} color={colors.foreground} muted={colors.mutedForeground} />
             <ResultRow label="Penghargaan Masa Kerja" value={formatRp(result.penghargaan)} color={colors.foreground} muted={colors.mutedForeground} />
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <ResultRow label="Total Estimasi" value={formatRp(result.total)} color='#10b981' muted={colors.mutedForeground} bold />
             <Text style={[styles.disclaimer, { color: colors.mutedForeground }]}>
-              * Belum termasuk uang penggantian hak (cuti, perumahan, dll). Konsultasikan dengan pengacara.
+              * Belum termasuk uang penggantian hak (cuti, perumahan, dll).
             </Text>
+            <LexBotSuggestion />
           </View>
         )}
       </View>
@@ -114,15 +150,36 @@ function KalkulatorPesangon() {
 function KalkulatorBPHTB() {
   const colors = useColors();
   const [njopStr, setNjopStr] = useState('');
-  const [npoptkpStr, setNpoptkpStr] = useState('80000000');
-  const [result, setResult] = useState<number | null>(null);
+  const [npoptkpStr, setNpoptkpStr] = useState('');
+  const [rateStr, setRateStr] = useState('');
+  const [error, setError] = useState('');
+  const [result, setResult] = useState<{
+    bphtb: number;
+    npoptkp: number;
+    ratePercent: number;
+  } | null>(null);
 
   function calculate() {
-    const njop = parseFloat(njopStr.replace(/[^\d.]/g, ''));
-    const npoptkp = parseFloat(npoptkpStr.replace(/[^\d.]/g, '')) || 80_000_000;
-    if (!njop) return;
-    const kena = Math.max(0, njop - npoptkp);
-    setResult(kena * 0.05);
+    const njop = parseFloat(njopStr.replace(/[^\d]/g, ''));
+    const npoptkp = parseFloat(npoptkpStr.replace(/[^\d]/g, ''));
+    const ratePercent = parseFloat(
+      rateStr.replace(',', '.').replace(/[^\d.]/g, ''),
+    );
+
+    if (!njop || Number.isNaN(npoptkp) || Number.isNaN(ratePercent)) {
+      setError('Lengkapi nilai transaksi, NPOPTKP daerah, dan tarif daerah.');
+      setResult(null);
+      return;
+    }
+    if (npoptkp < 0 || ratePercent < 0 || ratePercent > MAX_BPHTB_RATE_PERCENT) {
+      setError(`Tarif daerah harus 0–${MAX_BPHTB_RATE_PERCENT}% dan NPOPTKP tidak boleh negatif.`);
+      setResult(null);
+      return;
+    }
+
+    const calculation = calculateBphtb(njop, npoptkp, ratePercent);
+    setError('');
+    setResult({ bphtb: calculation.bphtb, npoptkp, ratePercent });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }
 
@@ -146,16 +203,38 @@ function KalkulatorBPHTB() {
           />
         </View>
         <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: colors.mutedForeground }]}>NPOPTKP (Rp, default Rp 80 jt)</Text>
+          <Text style={[styles.label, { color: colors.mutedForeground }]}>NPOPTKP daerah (Rp)</Text>
           <TextInput
             style={[styles.input, { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border }]}
-            placeholder="80000000"
+            placeholder="mis. 80000000"
             placeholderTextColor={colors.mutedForeground}
             keyboardType="numeric"
             value={npoptkpStr}
             onChangeText={setNpoptkpStr}
           />
+          <Text style={[styles.helperText, { color: colors.mutedForeground }]}>
+            NPOPTKP ditetapkan pemerintah daerah dan dapat berbeda antar kabupaten/kota. Isi sesuai ketetapan BPKAD setempat.
+          </Text>
         </View>
+        <View style={styles.inputGroup}>
+          <Text style={[styles.label, { color: colors.mutedForeground }]}>Tarif BPHTB daerah (%)</Text>
+          <TextInput
+            style={[styles.input, { color: colors.foreground, backgroundColor: colors.muted, borderColor: error ? '#ef4444' : colors.border }]}
+            placeholder="mis. 5"
+            placeholderTextColor={colors.mutedForeground}
+            keyboardType="decimal-pad"
+            value={rateStr}
+            onChangeText={(value) => {
+              setRateStr(value);
+              setError('');
+              setResult(null);
+            }}
+          />
+          <Text style={[styles.helperText, { color: colors.mutedForeground }]}>
+            Tarif ditetapkan pemerintah daerah, dengan batas maksimum {MAX_BPHTB_RATE_PERCENT}%.
+          </Text>
+        </View>
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
         <Pressable
           onPress={calculate}
           style={({ pressed }) => [styles.calcBtn, { backgroundColor: '#f59e0b', opacity: pressed ? 0.8 : 1 }]}
@@ -164,10 +243,13 @@ function KalkulatorBPHTB() {
         </Pressable>
         {result !== null && (
           <View style={[styles.resultBox, { backgroundColor: colors.muted }]}>
-            <ResultRow label="BPHTB Terutang (5%)" value={formatRp(result)} color='#f59e0b' muted={colors.mutedForeground} bold />
+            <ResultRow label="NPOPTKP yang digunakan" value={formatRp(result.npoptkp)} color={colors.foreground} muted={colors.mutedForeground} />
+            <ResultRow label="Tarif daerah yang digunakan" value={`${result.ratePercent.toLocaleString('id-ID')}%`} color={colors.foreground} muted={colors.mutedForeground} />
+            <ResultRow label="BPHTB Terutang" value={formatRp(result.bphtb)} color='#f59e0b' muted={colors.mutedForeground} bold />
             <Text style={[styles.disclaimer, { color: colors.mutedForeground }]}>
-              * NPOPTKP dapat berbeda per daerah. Verifikasi di BPKAD setempat.
+              * Verifikasi NJOP, tarif, dan NPOPTKP di BPKAD setempat.
             </Text>
+            <LexBotSuggestion />
           </View>
         )}
       </View>
@@ -251,10 +333,37 @@ function KalkulatorLembur() {
             <ResultRow label={`Jam berikutnya (×2)`} value={formatRp(result.jam2)} color={colors.foreground} muted={colors.mutedForeground} />
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <ResultRow label="Total Lembur" value={formatRp(result.total)} color='#8b5cf6' muted={colors.mutedForeground} bold />
+            <LexBotSuggestion />
           </View>
         )}
       </View>
     </View>
+  );
+}
+
+function LexBotSuggestion() {
+  const colors = useColors();
+  const router = useRouter();
+
+  return (
+    <Pressable
+      onPress={() => router.navigate('/(tabs)')}
+      style={({ pressed }) => [
+        styles.lexBotSuggestion,
+        {
+          borderColor: colors.border,
+          backgroundColor: pressed ? colors.card : 'transparent',
+        },
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel="Tanya detail hasil ini kepada LexBot"
+    >
+      <Ionicons name="chatbubble-ellipses-outline" size={18} color={colors.primary} />
+      <Text style={[styles.lexBotSuggestionText, { color: colors.primary }]}>
+        Tanya detail hasil ini kepada LexBot
+      </Text>
+      <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+    </Pressable>
   );
 }
 
@@ -306,6 +415,17 @@ export default function KalkulatorScreen() {
         <Text style={[styles.scrollSubtitle, { color: colors.mutedForeground }]}>
           Estimasi berdasarkan peraturan yang berlaku
         </Text>
+        <View style={[styles.disclaimerBanner, { backgroundColor: colors.muted, borderColor: '#f59e0b' }]}>
+          <Ionicons name="warning-outline" size={20} color="#f59e0b" />
+          <View style={styles.disclaimerBannerContent}>
+            <Text style={[styles.disclaimerBannerTitle, { color: colors.foreground }]}>
+              Estimasi saja — konsultasikan dengan pengacara
+            </Text>
+            <Text style={[styles.disclaimerBannerText, { color: colors.mutedForeground }]}>
+              Hasil dapat berbeda sesuai fakta perkara dan ketentuan daerah yang berlaku. Jangan jadikan hasil ini sebagai satu-satunya dasar keputusan hukum.
+            </Text>
+          </View>
+        </View>
         <KalkulatorPesangon />
         <KalkulatorBPHTB />
         <KalkulatorLembur />
@@ -347,6 +467,12 @@ const styles = StyleSheet.create({
   calcSub: { fontSize: 12, marginTop: -4 },
   inputGroup: { gap: 4 },
   label: { fontSize: 12, fontWeight: '500' as const },
+  optionGroup: { gap: 5 },
+  optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  option: { borderWidth: 1, borderRadius: 9, paddingHorizontal: 10, paddingVertical: 8 },
+  optionText: { fontSize: 12, fontWeight: '600' as const },
+  helperText: { fontSize: 11, lineHeight: 16 },
+  errorText: { color: '#ef4444', fontSize: 11, lineHeight: 16, fontWeight: '600' as const },
   input: {
     borderWidth: 1,
     borderRadius: 10,
@@ -363,10 +489,33 @@ const styles = StyleSheet.create({
   },
   calcBtnText: { color: '#fff', fontWeight: '700' as const, fontSize: 15 },
   resultBox: { borderRadius: 10, padding: 12, gap: 6 },
+  resultContext: { fontSize: 12, fontWeight: '600' as const, marginBottom: 2 },
   resultRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   resultLabel: { fontSize: 13, flex: 1, paddingRight: 8 },
   resultValue: { fontSize: 14, fontWeight: '600' as const },
   bold: { fontWeight: '700' as const, fontSize: 15 },
   divider: { height: StyleSheet.hairlineWidth, marginVertical: 4 },
   disclaimer: { fontSize: 11, fontStyle: 'italic', marginTop: 4 },
+  disclaimerBanner: {
+    flexDirection: 'row',
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  disclaimerBannerContent: { flex: 1, gap: 4 },
+  disclaimerBannerTitle: { fontSize: 14, fontWeight: '700' as const, lineHeight: 19 },
+  disclaimerBannerText: { fontSize: 12, lineHeight: 17 },
+  lexBotSuggestion: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    borderWidth: 1,
+    borderRadius: 9,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    marginTop: 4,
+  },
+  lexBotSuggestionText: { flex: 1, fontSize: 12, fontWeight: '700' as const },
 });
