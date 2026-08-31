@@ -269,7 +269,7 @@ describe("rate-limit SSE error events — /api/agentic route", () => {
     app = buildApp(agenticRouter, "user-1");
   });
 
-  it("emits { type: 'error' } SSE event when orchestrator hits rate limit (manual mode)", async () => {
+  it("emits { type: 'error' } SSE event when a manually selected specialist hits rate limit", async () => {
     // Use forcedAgents so the orchestrator call is skipped; batchProcess is
     // invoked when the first agent stream is created.
     const res = await request(app)

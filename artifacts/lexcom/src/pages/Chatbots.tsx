@@ -67,9 +67,11 @@ interface StreamEvent {
     | "agent_start"
     | "agent_chunk"
     | "agent_done"
+    | "agent_error"
     | "synthesis_start"
     | "synthesis_chunk"
     | "synthesis_done"
+    | "synthesis_error"
     | "done"
     | "error";
   agents?: AgentMeta[];
@@ -267,6 +269,26 @@ export default function Chatbots() {
                       ),
                     };
 
+                  } else if (event.type === "agent_error") {
+                    return {
+                      ...t,
+                      contributions: t.contributions.map((c) =>
+                        c.agentKey === event.agent
+                          ? {
+                              ...c,
+                              status: "done",
+                              color: "#ef4444",
+                              content: [
+                                c.content,
+                                `**Telaah terhenti:** ${event.message ?? "Agen gagal menghasilkan telaah."}`,
+                              ]
+                                .filter(Boolean)
+                                .join("\n\n---\n\n"),
+                            }
+                          : c
+                      ),
+                    };
+
                   } else if (event.type === "synthesis_start") {
                     return { ...t, synthesisStatus: "streaming" };
 
@@ -276,26 +298,40 @@ export default function Chatbots() {
                   } else if (event.type === "synthesis_done") {
                     return { ...t, synthesisStatus: "done" };
 
+                  } else if (event.type === "synthesis_error") {
+                    return {
+                      ...t,
+                      synthesisStatus: "done",
+                      synthesis: [
+                        t.synthesis,
+                        `**Sintesis terhenti:** ${event.message ?? "Sintesis akhir gagal."}`,
+                      ]
+                        .filter(Boolean)
+                        .join("\n\n---\n\n"),
+                    };
+
                   } else if (event.type === "done") {
                     return { ...t, status: "done", orchestrating: false };
 
                   } else if (event.type === "error") {
+                    const errorContribution: AgentContribution = {
+                      agentKey: "error",
+                      agentName: "Error",
+                      emoji: "❌",
+                      color: "#ef4444",
+                      content: event.message ?? "Terjadi kesalahan",
+                      status: "done",
+                      collapsed: false,
+                    };
                     return {
                       ...t,
                       status: "done",
                       orchestrating: false,
                       retryText: text.trim(),
-                      contributions: [
-                        {
-                          agentKey: "error",
-                          agentName: "Error",
-                          emoji: "❌",
-                          color: "#ef4444",
-                          content: event.message ?? "Terjadi kesalahan",
-                          status: "done",
-                          collapsed: false,
-                        },
-                      ],
+                      contributions:
+                        t.contributions.length > 0
+                          ? [...t.contributions, errorContribution]
+                          : [errorContribution],
                     };
                   }
                   return t;

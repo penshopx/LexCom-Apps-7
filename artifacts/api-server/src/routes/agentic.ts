@@ -268,15 +268,6 @@ router.post("/agentic/conversations/:id/chat", async (req, res) => {
       res.write(`data: ${JSON.stringify(data)}\n\n`);
     };
 
-    /** Emit a user-visible error event over SSE and close the stream. */
-    const emitStreamError = (err: unknown) => {
-      const message = isRateLimitError(err)
-        ? "Batas permintaan AI tercapai. Silakan coba lagi dalam beberapa detik."
-        : "Terjadi kesalahan saat memproses respons. Silakan coba lagi.";
-      emit({ type: "error", message });
-      res.end();
-    };
-
     emit({ type: "orchestrating" });
 
     let selectedAgents: string[];
@@ -321,6 +312,15 @@ router.post("/agentic/conversations/:id/chat", async (req, res) => {
       reasoning = args.reasoning;
     }
 
+    if (selectedAgents.length === 0) {
+      emit({
+        type: "error",
+        message: "Tidak ada agen valid yang dipilih. Silakan pilih agen dan coba lagi.",
+      });
+      res.end();
+      return;
+    }
+
     const agentMetas = selectedAgents.map((key) => ({
       key,
       ...AGENT_META[key]!,
@@ -333,71 +333,114 @@ router.post("/agentic/conversations/:id/chat", async (req, res) => {
       reasoning,
     });
 
-    const agentResponses: { agent: string; content: string }[] = [];
+    /**
+     * Run specialists concurrently, but keep a failure local to its agent.
+     * Telaah Dokumen starts several reviews at once; ending the whole SSE
+     * response because one provider request was rate-limited would discard
+     * otherwise useful perspectives that are already running.
+     */
+    let rateLimitedAgentCount = 0;
+    const agentResults = await Promise.all(
+      selectedAgents.map(async (agentKey) => {
+        const agentMeta = AGENT_META[agentKey]!;
+        emit({
+          type: "agent_start",
+          agent: agentKey,
+          agentName: agentMeta.name,
+          emoji: agentMeta.emoji,
+          color: agentMeta.color,
+        });
 
-    for (const agentKey of selectedAgents) {
-      const agentMeta = AGENT_META[agentKey]!;
-      emit({ type: "agent_start", agent: agentKey, agentName: agentMeta.name, emoji: agentMeta.emoji, color: agentMeta.color });
+        const systemPrompt = `${AGENT_SYSTEM_PROMPTS[agentKey] ?? AGENT_SYSTEM_PROMPTS.corporate}\n\n${LEGAL_ANSWER_STANDARD}`;
+        const agentMessages = [
+          { role: "system" as const, content: systemPrompt },
+          ...chatHistory,
+          { role: "user" as const, content },
+        ];
 
-      const systemPrompt = `${AGENT_SYSTEM_PROMPTS[agentKey] ?? AGENT_SYSTEM_PROMPTS.corporate}\n\n${LEGAL_ANSWER_STANDARD}`;
+        let agentContent = "";
+        try {
+          const agentStream = await withRetry(() =>
+            openai.chat.completions.create({
+              model: "gpt-5.2",
+              messages: agentMessages,
+              max_completion_tokens: 3000,
+              stream: true,
+            }),
+          );
 
-      const agentMessages = [
-        { role: "system" as const, content: systemPrompt },
-        ...chatHistory,
-        { role: "user" as const, content },
-      ];
-
-      let agentContent = "";
-
-      let agentStream;
-      try {
-        agentStream = await withRetry(() =>
-          openai.chat.completions.create({
-            model: "gpt-5.2",
-            messages: agentMessages,
-            max_completion_tokens: 3000,
-            stream: true,
-          }),
-        );
-      } catch (err) {
-        req.log.error({ err, agentKey }, "Agentic agent stream failed");
-        emitStreamError(err);
-        return;
-      }
-
-      try {
-        for await (const chunk of agentStream) {
-          const delta = chunk.choices[0]?.delta?.content;
-          if (delta) {
-            agentContent += delta;
-            emit({ type: "agent_chunk", agent: agentKey, content: delta });
+          for await (const chunk of agentStream) {
+            const delta = chunk.choices[0]?.delta?.content;
+            if (delta) {
+              agentContent += delta;
+              emit({ type: "agent_chunk", agent: agentKey, content: delta });
+            }
           }
+        } catch (err) {
+          req.log.error({ err, agentKey }, "Agentic agent stream failed");
+          const rateLimited = isRateLimitError(err);
+          if (rateLimited) {
+            rateLimitedAgentCount++;
+          }
+          const message = rateLimited
+            ? "Batas permintaan AI tercapai untuk agen ini. Silakan coba lagi."
+            : "Agen ini gagal menghasilkan telaah. Silakan coba lagi.";
+          emit({ type: "agent_error", agent: agentKey, message });
+          return agentContent.trim()
+            ? { agent: agentKey, content: agentContent, degraded: true }
+            : null;
         }
-      } catch (err) {
-        req.log.error({ err, agentKey }, "Agentic agent stream interrupted");
-        emitStreamError(err);
-        return;
-      }
 
-      agentResponses.push({ agent: agentKey, content: agentContent });
-      emit({ type: "agent_done", agent: agentKey });
+        if (!agentContent.trim()) {
+          req.log.warn({ agentKey }, "Agentic agent returned an empty response");
+          emit({
+            type: "agent_error",
+            agent: agentKey,
+            message: "Agen ini tidak menghasilkan hasil telaah. Silakan coba lagi.",
+          });
+          return null;
+        }
+
+        emit({ type: "agent_done", agent: agentKey });
+        return { agent: agentKey, content: agentContent, degraded: false };
+      }),
+    );
+
+    const agentResponses = agentResults.filter(
+      (
+        result,
+      ): result is { agent: string; content: string; degraded: boolean } =>
+        result !== null,
+    );
+
+    if (agentResponses.length === 0) {
+      emit({
+        type: "error",
+        message:
+          rateLimitedAgentCount === selectedAgents.length
+            ? "Batas permintaan AI tercapai. Silakan coba lagi dalam beberapa detik."
+            : "Tidak ada agen yang berhasil menghasilkan telaah. Silakan coba lagi.",
+      });
+      res.end();
+      return;
     }
 
     let synthesisContent = "";
+    let synthesisError: string | null = null;
 
     if (mode === "multi" && agentResponses.length > 1) {
       emit({ type: "synthesis_start" });
 
       const agentSummaries = agentResponses
-        .map(({ agent, content }) => {
+        .map(({ agent, content, degraded }) => {
           const meta = AGENT_META[agent];
-          return `=== ${meta?.name ?? agent} ===\n${content}`;
+          const status = degraded ? " (respons parsial; perlu verifikasi)" : "";
+          return `=== ${meta?.name ?? agent}${status} ===\n${content}`;
         })
         .join("\n\n");
 
-      let synthStream;
       try {
-        synthStream = await withRetry(() =>
+        const synthStream = await withRetry(() =>
           openai.chat.completions.create({
             model: "gpt-5.2",
             messages: [
@@ -411,13 +454,7 @@ router.post("/agentic/conversations/:id/chat", async (req, res) => {
             stream: true,
           }),
         );
-      } catch (err) {
-        req.log.error({ err }, "Agentic synthesis stream failed");
-        emitStreamError(err);
-        return;
-      }
 
-      try {
         for await (const chunk of synthStream) {
           const delta = chunk.choices[0]?.delta?.content;
           if (delta) {
@@ -426,18 +463,46 @@ router.post("/agentic/conversations/:id/chat", async (req, res) => {
           }
         }
       } catch (err) {
-        req.log.error({ err }, "Agentic synthesis stream interrupted");
-        emitStreamError(err);
-        return;
+        req.log.error({ err }, "Agentic synthesis stream failed");
+        synthesisError = isRateLimitError(err)
+          ? "Sintesis akhir terkena batas permintaan AI. Hasil tiap agen tetap tersedia."
+          : "Sintesis akhir gagal. Hasil tiap agen tetap tersedia.";
+        emit({ type: "synthesis_error", message: synthesisError });
       }
 
-      emit({ type: "synthesis_done" });
+      if (!synthesisError && !synthesisContent.trim()) {
+        synthesisError =
+          "AI tidak menghasilkan sintesis akhir. Hasil tiap agen tetap tersedia.";
+        emit({ type: "synthesis_error", message: synthesisError });
+      } else if (!synthesisError) {
+        emit({ type: "synthesis_done" });
+      }
     }
 
-    const savedContent =
-      mode === "multi" && synthesisContent
-        ? `[Sintesis dari ${agentResponses.map((r) => AGENT_META[r.agent]?.name).join(", ")}]\n\n${synthesisContent}`
-        : agentResponses[0]?.content ?? "";
+    const agentNames = agentResponses
+      .map((response) => AGENT_META[response.agent]?.name ?? response.agent)
+      .join(", ");
+    const specialistFallback = agentResponses
+      .map(({ agent, content, degraded }) => {
+        const name = AGENT_META[agent]?.name ?? agent;
+        const status = degraded ? " — respons parsial, perlu verifikasi" : "";
+        return `## ${name}${status}\n\n${content}`;
+      })
+      .join("\n\n---\n\n");
+
+    let savedContent: string;
+    if (mode === "multi" && synthesisContent.trim() && !synthesisError) {
+      savedContent = `[Sintesis dari ${agentNames}]\n\n${synthesisContent}`;
+    } else if (mode === "multi") {
+      savedContent = `[Hasil agen yang tersedia: ${agentNames}]\n\n${specialistFallback}`;
+      if (synthesisError) {
+        savedContent += `\n\n---\n\n**Catatan:** ${synthesisError}`;
+      }
+    } else if (agentResponses[0]?.degraded) {
+      savedContent = `[Respons parsial dari ${agentNames}; perlu verifikasi]\n\n${agentResponses[0].content}`;
+    } else {
+      savedContent = agentResponses[0]?.content ?? "";
+    }
 
     await db.insert(messages).values({
       conversationId: convId,
