@@ -211,6 +211,15 @@ export default function Chatbots() {
 
             try {
               const event = JSON.parse(jsonStr) as StreamEvent;
+              if (
+                (event.type === "agent_chunk" || event.type === "synthesis_chunk") &&
+                event.content
+              ) {
+                receivedContent = true;
+              }
+              if (event.type === "error") {
+                streamFailed = true;
+              }
 
               setTurns((prev) =>
                 prev.map((t) => {
@@ -241,7 +250,6 @@ export default function Chatbots() {
                     return { ...t, contributions: [...t.contributions, newContrib] };
 
                   } else if (event.type === "agent_chunk") {
-                    if (event.content) receivedContent = true;
                     return {
                       ...t,
                       contributions: t.contributions.map((c) =>
@@ -263,7 +271,6 @@ export default function Chatbots() {
                     return { ...t, synthesisStatus: "streaming" };
 
                   } else if (event.type === "synthesis_chunk") {
-                    if (event.content) receivedContent = true;
                     return { ...t, synthesis: t.synthesis + (event.content ?? "") };
 
                   } else if (event.type === "synthesis_done") {
@@ -273,7 +280,6 @@ export default function Chatbots() {
                     return { ...t, status: "done", orchestrating: false };
 
                   } else if (event.type === "error") {
-                    streamFailed = true;
                     return {
                       ...t,
                       status: "done",
@@ -574,7 +580,14 @@ export default function Chatbots() {
                         turn={turn}
                         onToggleCollapse={(agentKey) => toggleAgentCollapse(turn.id, agentKey)}
                         onRetry={(retryText) => {
-                          setTurns((prev) => prev.filter((item) => item.id !== turn.id));
+                           setTurns((prev) => {
+                             const failedIndex = prev.findIndex((item) => item.id === turn.id);
+                             const userTurnId =
+                               failedIndex > 0 && prev[failedIndex - 1]?.type === "user"
+                                 ? prev[failedIndex - 1]?.id
+                                 : undefined;
+                             return prev.filter((item) => item.id !== turn.id && item.id !== userTurnId);
+                           });
                           void sendMessage(retryText);
                         }}
                       />

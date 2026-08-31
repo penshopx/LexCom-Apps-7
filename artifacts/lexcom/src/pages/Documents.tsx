@@ -138,9 +138,10 @@ export default function Documents() {
                 fullContent += data.content;
                 setGeneratedContent(fullContent);
               }
-              if (data.error) {
-                toast({ title: "Gagal Membuat Dokumen", description: data.error, variant: "destructive" });
-                setGenerationError(data.error);
+              if (data.type === "error" || data.error) {
+                const message = data.message ?? data.error ?? "Gagal membuat dokumen. Silakan coba lagi.";
+                toast({ title: "Gagal Membuat Dokumen", description: message, variant: "destructive" });
+                setGenerationError(message);
                 return;
               }
             } catch (e) {

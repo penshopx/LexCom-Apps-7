@@ -45,6 +45,7 @@ interface SseEvent {
   agentName?: string;
   color?: string;
   message?: string;
+  error?: string;
 }
 
 interface DbMessage {
@@ -235,6 +236,11 @@ export default function LexBotScreen() {
 
     let convId = conversationId;
     const forcedAgents = pendingAgent ? [pendingAgent] : undefined;
+    let currentAgents: AgentInfo[] = [];
+    let assistantMsgId = generateId();
+    let assistantAdded = false;
+    let receivedContent = false;
+    let streamFailed = false;
 
     try {
       if (!convId) {
@@ -275,10 +281,7 @@ export default function LexBotScreen() {
 
       const decoder = new TextDecoder();
       let buffer = '';
-      let currentAgents: AgentInfo[] = [];
       let fullContent = '';
-      let assistantMsgId = generateId();
-      let assistantAdded = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -303,7 +306,9 @@ export default function LexBotScreen() {
             } else if (event.type === 'agent_start') {
               setStatus('streaming');
             } else if (event.type === 'agent_chunk') {
-              fullContent += event.content ?? '';
+              const content = event.content ?? '';
+              if (content) receivedContent = true;
+              fullContent += content;
               if (!assistantAdded) {
                 setMessages((prev) => [
                   ...prev,
@@ -326,7 +331,9 @@ export default function LexBotScreen() {
               assistantAdded = false;
               assistantMsgId = generateId();
             } else if (event.type === 'synthesis_chunk') {
-              fullContent += event.content ?? '';
+              const content = event.content ?? '';
+              if (content) receivedContent = true;
+              fullContent += content;
               if (!assistantAdded) {
                 setMessages((prev) => [
                   ...prev,
@@ -352,15 +359,45 @@ export default function LexBotScreen() {
                 }
                 return updated;
               });
-            } else if (event.type === 'error') {
+            } else if (event.type === 'error' || event.error) {
+              streamFailed = true;
               setShowTyping(false);
-              setMessages((prev) => [
-                ...prev,
-                { id: generateId(), role: 'assistant', content: event.message ?? 'Terjadi kesalahan.' },
-              ]);
+              const errorMessage = event.message ?? event.error ?? 'Terjadi kesalahan saat memproses jawaban.';
+              const errorMessageData: Message = {
+                id: assistantMsgId,
+                role: 'assistant',
+                content: errorMessage,
+                agents: currentAgents,
+                error: true,
+                retryText: trimmed,
+                isStreaming: false,
+              };
+              setMessages((prev) => {
+                if (assistantAdded) {
+                  return prev.map((message) => message.id === assistantMsgId ? errorMessageData : message);
+                }
+                return [...prev, errorMessageData];
+              });
             }
           } catch { /* skip parse errors */ }
         }
+      }
+      if (!streamFailed && !receivedContent) {
+        const emptyResponse: Message = {
+          id: assistantMsgId,
+          role: 'assistant',
+          content: 'AI tidak menghasilkan jawaban. Silakan coba lagi.',
+          agents: currentAgents,
+          error: true,
+          retryText: trimmed,
+          isStreaming: false,
+        };
+        setMessages((prev) => {
+          if (assistantAdded) {
+            return prev.map((message) => message.id === assistantMsgId ? emptyResponse : message);
+          }
+          return [...prev, emptyResponse];
+        });
       }
     } catch (error) {
       setShowTyping(false);
@@ -368,10 +405,21 @@ export default function LexBotScreen() {
         error instanceof Error && error.message === 'AUTH_REQUIRED'
           ? 'Silakan masuk terlebih dahulu untuk menyimpan percakapan.'
           : 'Maaf, tidak dapat terhubung ke server. Coba lagi.';
-      setMessages((prev) => [
-        ...prev,
-        { id: generateId(), role: 'assistant', content: errorMessage },
-      ]);
+      const failedResponse: Message = {
+        id: assistantMsgId,
+        role: 'assistant',
+        content: errorMessage,
+        agents: currentAgents,
+        error: true,
+        retryText: trimmed,
+        isStreaming: false,
+      };
+      setMessages((prev) => {
+        if (assistantAdded) {
+          return prev.map((message) => message.id === assistantMsgId ? failedResponse : message);
+        }
+        return [...prev, failedResponse];
+      });
     } finally {
       setStatus('idle');
       setShowTyping(false);
@@ -446,7 +494,23 @@ export default function LexBotScreen() {
           <FlatList
             data={reversedMessages}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => <ChatMessage message={item} />}
+            renderItem={({ item }) => (
+              <ChatMessage
+                message={item}
+                onRetry={(retryText) => {
+                  if (!item.error || isStreaming) return;
+                  setMessages((prev) => {
+                    const failedIndex = prev.findIndex((message) => message.id === item.id);
+                    const userMessageId =
+                      failedIndex > 0 && prev[failedIndex - 1]?.role === 'user'
+                        ? prev[failedIndex - 1]?.id
+                        : undefined;
+                    return prev.filter((message) => message.id !== item.id && message.id !== userMessageId);
+                  });
+                  void handleSend(retryText);
+                }}
+              />
+            )}
             inverted={messages.length > 0}
             ListHeaderComponent={showTyping ? <TypingIndicator /> : null}
             contentContainerStyle={styles.listContent}

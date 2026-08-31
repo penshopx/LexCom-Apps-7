@@ -29,6 +29,8 @@ interface ChatMsg {
   agentEmoji?: string;
   action?: string;
   isStreaming?: boolean;
+  error?: boolean;
+  retryText?: string;
 }
 
 interface AgentStatus {
@@ -414,10 +416,12 @@ export function FloatingLexBot() {
           signal: abortRef.current.signal,
         });
 
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         if (!res.body) throw new Error("No body");
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buf = "";
+        let streamFailed = false;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -469,21 +473,53 @@ export function FloatingLexBot() {
                   )
                 );
               } else if (ev.type === "error") {
+                streamFailed = true;
                 setAgentStatus(null);
                 setMessages((p) =>
                   p.map((m) =>
-                    m.id === asstId ? { ...m, content: `❌ ${ev.message ?? "Terjadi kesalahan"}`, isStreaming: false } : m
+                    m.id === asstId
+                      ? {
+                          ...m,
+                          content: ev.message ?? "Terjadi kesalahan saat memproses jawaban.",
+                          error: true,
+                          retryText: text.trim(),
+                          isStreaming: false,
+                        }
+                      : m
                   )
                 );
               }
             } catch {}
           }
         }
+        if (!streamFailed && !fullContent.trim()) {
+          setMessages((p) =>
+            p.map((m) =>
+              m.id === asstId
+                ? {
+                    ...m,
+                    content: "AI tidak menghasilkan jawaban. Silakan coba lagi.",
+                    error: true,
+                    retryText: text.trim(),
+                    isStreaming: false,
+                  }
+                : m
+            )
+          );
+        }
       } catch (err) {
         if ((err as Error).name !== "AbortError") {
           setMessages((p) =>
             p.map((m) =>
-              m.id === asstId ? { ...m, content: "❌ Koneksi terputus. Silakan coba lagi.", isStreaming: false } : m
+              m.id === asstId
+                ? {
+                    ...m,
+                    content: "Koneksi ke AI terputus. Silakan coba lagi.",
+                    error: true,
+                    retryText: text.trim(),
+                    isStreaming: false,
+                  }
+                : m
             )
           );
         }
@@ -626,8 +662,22 @@ export function FloatingLexBot() {
                     <WelcomeState prompts={prompts} onSend={(p) => void send(p)} />
                   ) : (
                     <div className="p-3 space-y-3">
-                      {messages.map((msg) => (
-                        <MsgBubble key={msg.id} msg={msg} />
+                       {messages.map((msg) => (
+                         <MsgBubble
+                           key={msg.id}
+                           msg={msg}
+                           onRetry={(retryText) => {
+                             setMessages((prev) => {
+                               const failedIndex = prev.findIndex((item) => item.id === msg.id);
+                               const userMessageId =
+                                 failedIndex > 0 && prev[failedIndex - 1]?.role === "user"
+                                   ? prev[failedIndex - 1]?.id
+                                   : undefined;
+                               return prev.filter((item) => item.id !== msg.id && item.id !== userMessageId);
+                             });
+                             void send(retryText);
+                           }}
+                         />
                       ))}
                       {agentStatus && (
                         <div
@@ -747,7 +797,7 @@ function WelcomeState({ prompts, onSend }: { prompts: string[]; onSend: (p: stri
   );
 }
 
-function MsgBubble({ msg }: { msg: ChatMsg }) {
+function MsgBubble({ msg, onRetry }: { msg: ChatMsg; onRetry: (text: string) => void }) {
   const isUser = msg.role === "user";
 
   if (isUser) {
@@ -784,9 +834,25 @@ function MsgBubble({ msg }: { msg: ChatMsg }) {
             </Badge>
           )}
         </div>
-        <div className="bg-card/80 border border-white/10 rounded-xl rounded-tl-sm px-3 py-2">
+        <div className={`rounded-xl rounded-tl-sm px-3 py-2 ${
+          msg.error ? "bg-red-500/10 border border-red-500/30" : "bg-card/80 border border-white/10"
+        }`}>
           {msg.content ? (
-            <MarkdownRenderer content={msg.content} className="text-xs" />
+            <div className="space-y-2">
+              <MarkdownRenderer content={msg.content} className="text-xs" />
+              {msg.error && msg.retryText && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onRetry(msg.retryText!)}
+                  className="h-7 gap-1.5 border-red-500/30 text-red-300 hover:bg-red-500/10 text-xs"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Coba Lagi
+                </Button>
+              )}
+            </div>
           ) : (
             <div className="flex gap-1.5 items-center text-muted-foreground">
               <span className="w-1 h-1 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: "0ms" }} />

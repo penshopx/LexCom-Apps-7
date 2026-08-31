@@ -380,11 +380,16 @@ export default function AgentChat() {
                 receivedContent += data.content;
                 setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: m.content + data.content } : m));
               }
-              if (data.error) {
+              if (data.type === "error" || data.error) {
                 streamFailed = true;
                 setMessages(prev => prev.map(m =>
                   m.id === aiMsgId
-                    ? { ...m, content: data.error, error: true, retryText: userMsg.content }
+                    ? {
+                        ...m,
+                        content: data.message ?? data.error ?? "Terjadi kesalahan saat memproses jawaban.",
+                        error: true,
+                        retryText: userMsg.content,
+                      }
                     : m
                 ));
                 return;
@@ -511,7 +516,14 @@ export default function AgentChat() {
                               variant="outline"
                               size="sm"
                               onClick={() => {
-                                setMessages(prev => prev.filter(item => item.id !== msg.id));
+                                setMessages(prev => {
+                                  const failedIndex = prev.findIndex(item => item.id === msg.id);
+                                  const userMessageId =
+                                    failedIndex > 0 && prev[failedIndex - 1]?.role === "user"
+                                      ? prev[failedIndex - 1]?.id
+                                      : undefined;
+                                  return prev.filter(item => item.id !== msg.id && item.id !== userMessageId);
+                                });
                                 void sendMessage(msg.retryText);
                               }}
                               className="h-8 gap-2 border-red-500/30 text-red-300 hover:bg-red-500/10"

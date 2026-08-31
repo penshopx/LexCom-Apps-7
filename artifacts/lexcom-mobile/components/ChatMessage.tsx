@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet, Platform, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 
 export interface AgentInfo {
@@ -15,13 +16,16 @@ export interface Message {
   agents?: AgentInfo[];
   isStreaming?: boolean;
   statusText?: string;
+  error?: boolean;
+  retryText?: string;
 }
 
 interface Props {
   message: Message;
+  onRetry?: (text: string) => void;
 }
 
-export default function ChatMessage({ message }: Props) {
+export default function ChatMessage({ message, onRetry }: Props) {
   const colors = useColors();
   const isUser = message.role === 'user';
 
@@ -53,7 +57,13 @@ export default function ChatMessage({ message }: Props) {
             styles.bubble,
             isUser
               ? [styles.userBubble, { backgroundColor: colors.primary }]
-              : [styles.assistantBubble, { backgroundColor: colors.card, borderColor: colors.border }],
+                : [
+                    styles.assistantBubble,
+                    {
+                      backgroundColor: message.error ? colors.destructive + '18' : colors.card,
+                      borderColor: message.error ? colors.destructive : colors.border,
+                    },
+                  ],
           ]}
         >
           <Text
@@ -67,6 +77,17 @@ export default function ChatMessage({ message }: Props) {
               <Text style={{ color: colors.primary }}> ▍</Text>
             )}
           </Text>
+          {message.error && message.retryText && onRetry ? (
+            <Pressable
+              onPress={() => onRetry(message.retryText!)}
+              style={({ pressed }) => [styles.retryButton, { borderColor: colors.destructive, opacity: pressed ? 0.7 : 1 }]}
+              accessibilityRole="button"
+              accessibilityLabel="Coba lagi"
+            >
+              <Ionicons name="refresh-outline" size={15} color={colors.destructive} />
+              <Text style={[styles.retryText, { color: colors.destructive }]}>Coba Lagi</Text>
+            </Pressable>
+          ) : null}
         </View>
       )}
     </View>
@@ -117,6 +138,21 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderBottomLeftRadius: 4,
     borderWidth: 1,
+  },
+  retryButton: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: 1,
+    borderRadius: 9,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    marginTop: 9,
+  },
+  retryText: {
+    fontSize: 12,
+    fontWeight: '700' as const,
   },
   statusBubble: {
     borderRadius: 10,

@@ -45,8 +45,10 @@ const DOCUMENT_TYPES: DocumentType[] = [
 ];
 
 type GeneratedEvent = {
+  type?: string;
   content?: string;
   error?: string;
+  message?: string;
   done?: boolean;
 };
 
@@ -114,7 +116,9 @@ async function streamGeneratedDocument(
     if (!line.startsWith('data: ')) return;
     try {
       const event = JSON.parse(line.slice(6)) as GeneratedEvent;
-      if (event.error) throw new Error(event.error);
+      if (event.type === 'error' || event.error) {
+        throw new Error(event.message ?? event.error ?? 'Gagal membuat dokumen. Silakan coba lagi.');
+      }
       if (event.done) completed = true;
       if (event.content) {
         fullContent += event.content;
@@ -497,8 +501,15 @@ export default function DokumenScreen() {
           <View style={[styles.errorBox, { backgroundColor: colors.destructive + '18', borderColor: colors.destructive }]}>
             <Ionicons name="alert-circle-outline" size={19} color={colors.destructive} />
             <Text style={[styles.errorText, { color: colors.foreground }]}>{generationError}</Text>
-            <Pressable onPress={() => void handleGenerate()} disabled={isGenerating} style={styles.retryButton}>
+            <Pressable
+              onPress={() => void handleGenerate()}
+              disabled={isGenerating}
+              style={styles.retryButton}
+              accessibilityRole="button"
+              accessibilityLabel="Coba lagi membuat dokumen"
+            >
               <Ionicons name="refresh" size={17} color={colors.destructive} />
+              <Text style={[styles.retryText, { color: colors.destructive }]}>Coba Lagi</Text>
             </Pressable>
           </View>
         ) : null}
@@ -669,7 +680,8 @@ const styles = StyleSheet.create({
   generateButtonText: { fontSize: 15, fontWeight: '700' as const },
   errorBox: { flexDirection: 'row', alignItems: 'center', gap: 9, borderWidth: 1, borderRadius: 12, padding: 11, marginBottom: 14 },
   errorText: { flex: 1, fontSize: 13, lineHeight: 18 },
-  retryButton: { padding: 5 },
+  retryButton: { flexDirection: 'row', alignItems: 'center', gap: 5, padding: 5 },
+  retryText: { fontSize: 12, fontWeight: '700' as const },
   previewCard: { borderWidth: 1, borderRadius: 16, overflow: 'hidden', marginBottom: 24 },
   previewHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 13, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'transparent' },
   previewTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },

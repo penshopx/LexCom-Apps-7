@@ -441,7 +441,14 @@ export default function LexBot() {
                 key={msg.id}
                 message={msg}
                 onRetry={(retryText) => {
-                  setMessages((prev) => prev.filter((item) => item.id !== msg.id));
+                  setMessages((prev) => {
+                    const failedIndex = prev.findIndex((item) => item.id === msg.id);
+                    const userMessageId =
+                      failedIndex > 0 && prev[failedIndex - 1]?.role === "user"
+                        ? prev[failedIndex - 1]?.id
+                        : undefined;
+                    return prev.filter((item) => item.id !== msg.id && item.id !== userMessageId);
+                  });
                   void sendMessage(retryText);
                 }}
               />
