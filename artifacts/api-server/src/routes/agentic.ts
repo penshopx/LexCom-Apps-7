@@ -192,13 +192,16 @@ router.get("/agentic/conversations", async (req, res) => {
 
 router.post("/agentic/conversations", async (req, res) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?.id ?? null;
     if (!userId) {
       res.status(401).json({ error: "Authentication required" });
       return;
     }
     const { title = "Agentic Chat" } = req.body as { title?: string };
-    const [conv] = await db.select().from(conversations).where(eq(conversations.id, convId));
+    const [conv] = await db
+      .insert(conversations)
+      .values({ title, agentType: "agentic", userId })
+      .returning();
     res.status(201).json(conv);
   } catch (err) {
     req.log.error({ err }, "Failed to create agentic conversation");
@@ -215,6 +218,14 @@ router.post("/agentic/conversations", async (req, res) => {
 function canAccessConversation(conv: { userId: string | null }, requestUserId: string | null): boolean {
   return conv.userId !== null && requestUserId !== null && conv.userId === requestUserId;
 }
+
+router.post("/agentic/conversations/:id/chat", async (req, res) => {
+  try {
+    const requestUserId = req.user?.id ?? null;
+    if (!requestUserId) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
     const convId = parseInt(req.params.id);
     const { content, forcedAgents } = req.body as {
       content: string;
@@ -227,7 +238,15 @@ function canAccessConversation(conv: { userId: string | null }, requestUserId: s
     }
 
     const [conv] = await db.select().from(conversations).where(eq(conversations.id, convId));
-    const requestUserId = req.user?.id ?? null;
+    if (!conv) {
+      res.status(404).json({ error: "Conversation not found" });
+      return;
+    }
+    if (!canAccessConversation(conv, requestUserId)) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    await db.insert(messages).values({ conversationId: convId, role: "user", content });
     const history = await db
       .select()
       .from(messages)
@@ -432,9 +451,33 @@ function canAccessConversation(conv: { userId: string | null }, requestUserId: s
       const message = isRateLimitError(err)
         ? "Batas permintaan AI tercapai. Silakan coba lagi dalam beberapa detik."
         : "Terjadi kesalahan, silakan coba lagi";
+      if (res.headersSent) {
+        res.write(`data: ${JSON.stringify({ type: "error", message })}\n\n`);
+        res.end();
+      } else {
+        res.status(500).json({ error: message });
+      }
+    } catch {}
+  }
+});
+
+router.get("/agentic/conversations/:id/messages", async (req, res) => {
+  try {
+    const requestUserId = req.user?.id ?? null;
+    if (!requestUserId) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
     const convId = parseInt(req.params.id);
     const [conv] = await db.select().from(conversations).where(eq(conversations.id, convId));
-    const requestUserId = req.user?.id ?? null;
+    if (!conv) {
+      res.status(404).json({ error: "Conversation not found" });
+      return;
+    }
+    if (!canAccessConversation(conv, requestUserId)) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
     const msgs = await db
       .select()
       .from(messages)
