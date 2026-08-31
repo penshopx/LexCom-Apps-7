@@ -6,10 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./agenticConversation";
+export * from "./agenticMessage";
 export * from "./authorizationSessionHeaderParameter";
 export * from "./authUser";
 export * from "./authUserEnvelope";
 export * from "./beginBrowserLoginParams";
+export * from "./createAgenticConversationBody";
 export * from "./createCaseBody";
 export * from "./createDocumentBody";
 export * from "./createOpenaiConversationBody";
@@ -27,6 +30,7 @@ export * from "./openaiConversation";
 export * from "./openaiConversationWithMessages";
 export * from "./openaiError";
 export * from "./openaiMessage";
+export * from "./requiredAuthorizationSessionHeaderParameter";
 export * from "./sendOpenaiMessageBody";
 export * from "./updateCaseBody";
 export * from "./updateCaseBodyStatus";

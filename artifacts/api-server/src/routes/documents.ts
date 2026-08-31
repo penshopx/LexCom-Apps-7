@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, documentsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { batchProcess, isRateLimitError, limitAiRequest } from "@workspace/integrations-openai-ai-server/batch";
 
@@ -36,12 +36,11 @@ const DOCUMENT_SYSTEM_PROMPTS: Record<string, string> = {
 router.get("/documents", async (req, res) => {
   try {
     const userId = req.user?.id;
-    let docs;
-    if (userId) {
-      docs = await db.select().from(documentsTable).where(eq(documentsTable.userId, userId));
-    } else {
-      docs = await db.select().from(documentsTable);
+    if (!userId) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
     }
+    const docs = await db.select().from(documentsTable).where(eq(documentsTable.userId, userId));
     res.json(docs);
   } catch (err) {
     req.log.error({ err }, "Failed to list documents");
@@ -51,12 +50,16 @@ router.get("/documents", async (req, res) => {
 
 router.post("/documents", async (req, res) => {
   try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
     const { title, documentType, content } = req.body;
     if (!title || !documentType || !content) {
       res.status(400).json({ error: "title, documentType, and content are required" });
       return;
     }
-    const userId = req.user?.id ?? null;
     const [doc] = await db
       .insert(documentsTable)
       .values({ title, documentType, content, userId })
@@ -70,8 +73,16 @@ router.post("/documents", async (req, res) => {
 
 router.get("/documents/:id", async (req, res) => {
   try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
     const id = parseInt(req.params.id);
-    const [doc] = await db.select().from(documentsTable).where(eq(documentsTable.id, id));
+    const [doc] = await db
+      .select()
+      .from(documentsTable)
+      .where(and(eq(documentsTable.id, id), eq(documentsTable.userId, userId)));
     if (!doc) {
       res.status(404).json({ error: "Document not found" });
       return;
@@ -85,8 +96,16 @@ router.get("/documents/:id", async (req, res) => {
 
 router.delete("/documents/:id", async (req, res) => {
   try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
     const id = parseInt(req.params.id);
-    const [deleted] = await db.delete(documentsTable).where(eq(documentsTable.id, id)).returning();
+    const [deleted] = await db
+      .delete(documentsTable)
+      .where(and(eq(documentsTable.id, id), eq(documentsTable.userId, userId)))
+      .returning();
     if (!deleted) {
       res.status(404).json({ error: "Document not found" });
       return;
@@ -100,6 +119,11 @@ router.delete("/documents/:id", async (req, res) => {
 
 router.post("/documents/generate", async (req, res) => {
   try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
     const { documentType, description, parties, details } = req.body;
     if (!documentType || !description) {
       res.status(400).json({ error: "documentType and description are required" });

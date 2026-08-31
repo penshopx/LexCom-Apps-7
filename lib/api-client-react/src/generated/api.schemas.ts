@@ -51,6 +51,26 @@ export interface ErrorEnvelope {
   error: string;
 }
 
+export interface AgenticConversation {
+  id: number;
+  title: string;
+  agentType?: string;
+  userId?: string | null;
+  createdAt: string;
+}
+
+export interface AgenticMessage {
+  id: number;
+  conversationId: number;
+  role: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface CreateAgenticConversationBody {
+  title?: string;
+}
+
 export interface OpenaiConversation {
   id: number;
   title: string;
@@ -156,6 +176,11 @@ export interface GenerateDocumentBody {
  * Opaque session token — `Bearer <sid>`.
  */
 export type AuthorizationSessionHeaderParameter = string;
+
+/**
+ * Opaque server session token returned by the mobile token exchange — `Bearer <sid>`.
+ */
+export type RequiredAuthorizationSessionHeaderParameter = string;
 
 export type BeginBrowserLoginParams = {
   /**

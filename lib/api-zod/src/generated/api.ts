@@ -100,6 +100,70 @@ export const LogoutMobileSessionResponse = zod.object({
 });
 
 /**
+ * Returns all agentic conversations linked to the authenticated user, ordered newest first. Authentication is required.
+ * @summary List conversations for the authenticated user
+ */
+export const ListAgenticConversationsHeader = zod.object({
+  Authorization: zod
+    .string()
+    .describe(
+      "Opaque server session token returned by the mobile token exchange — `Bearer <sid>`.",
+    ),
+});
+
+export const ListAgenticConversationsResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  agentType: zod.string().optional(),
+  userId: zod.string().nullish(),
+  createdAt: zod.date(),
+});
+export const ListAgenticConversationsResponse = zod.array(
+  ListAgenticConversationsResponseItem,
+);
+
+/**
+ * @summary Create a new agentic conversation
+ */
+export const CreateAgenticConversationHeader = zod.object({
+  Authorization: zod
+    .string()
+    .describe(
+      "Opaque server session token returned by the mobile token exchange — `Bearer <sid>`.",
+    ),
+});
+
+export const CreateAgenticConversationBody = zod.object({
+  title: zod.string().optional(),
+});
+
+/**
+ * @summary Get all messages in an agentic conversation
+ */
+export const ListAgenticMessagesParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListAgenticMessagesHeader = zod.object({
+  Authorization: zod
+    .string()
+    .describe(
+      "Opaque server session token returned by the mobile token exchange — `Bearer <sid>`.",
+    ),
+});
+
+export const ListAgenticMessagesResponseItem = zod.object({
+  id: zod.number(),
+  conversationId: zod.number(),
+  role: zod.string(),
+  content: zod.string(),
+  createdAt: zod.date(),
+});
+export const ListAgenticMessagesResponse = zod.array(
+  ListAgenticMessagesResponseItem,
+);
+
+/**
  * @summary List all conversations
  */
 export const ListOpenaiConversationsResponseItem = zod.object({
@@ -256,8 +320,17 @@ export const DeleteCaseParams = zod.object({
 });
 
 /**
+ * Returns documents owned by the authenticated user.
  * @summary List all documents
  */
+export const ListDocumentsHeader = zod.object({
+  Authorization: zod
+    .string()
+    .describe(
+      "Opaque server session token returned by the mobile token exchange — `Bearer <sid>`.",
+    ),
+});
+
 export const ListDocumentsResponseItem = zod.object({
   id: zod.number(),
   title: zod.string(),
@@ -270,6 +343,14 @@ export const ListDocumentsResponse = zod.array(ListDocumentsResponseItem);
 /**
  * @summary Create a new legal document
  */
+export const CreateDocumentHeader = zod.object({
+  Authorization: zod
+    .string()
+    .describe(
+      "Opaque server session token returned by the mobile token exchange — `Bearer <sid>`.",
+    ),
+});
+
 export const CreateDocumentBody = zod.object({
   title: zod.string(),
   documentType: zod.string(),
@@ -281,6 +362,14 @@ export const CreateDocumentBody = zod.object({
  */
 export const GetDocumentParams = zod.object({
   id: zod.coerce.number(),
+});
+
+export const GetDocumentHeader = zod.object({
+  Authorization: zod
+    .string()
+    .describe(
+      "Opaque server session token returned by the mobile token exchange — `Bearer <sid>`.",
+    ),
 });
 
 export const GetDocumentResponse = zod.object({
@@ -298,9 +387,25 @@ export const DeleteDocumentParams = zod.object({
   id: zod.coerce.number(),
 });
 
+export const DeleteDocumentHeader = zod.object({
+  Authorization: zod
+    .string()
+    .describe(
+      "Opaque server session token returned by the mobile token exchange — `Bearer <sid>`.",
+    ),
+});
+
 /**
  * @summary Generate a legal document using AI
  */
+export const GenerateDocumentHeader = zod.object({
+  Authorization: zod
+    .string()
+    .describe(
+      "Opaque server session token returned by the mobile token exchange — `Bearer <sid>`.",
+    ),
+});
+
 export const GenerateDocumentBody = zod.object({
   documentType: zod.string(),
   description: zod.string(),

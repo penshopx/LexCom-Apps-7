@@ -461,6 +461,9 @@ paths:
       operationId: listDocuments
       tags: [documents]
       summary: List all documents
+      description: Returns documents owned by the authenticated user.
+      parameters:
+        - $ref: '#/components/parameters/RequiredAuthorizationSessionHeader'
       responses:
         "200":
           description: List of documents
@@ -470,10 +473,14 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/LegalDocument"
+        "401":
+          description: Authentication required
     post:
       operationId: createDocument
       tags: [documents]
       summary: Create a new legal document
+      parameters:
+        - $ref: '#/components/parameters/RequiredAuthorizationSessionHeader'
       requestBody:
         required: true
         content:
@@ -487,6 +494,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/LegalDocument"
+        "401":
+          description: Authentication required
   /documents/{id}:
     get:
       operationId: getDocument
@@ -498,6 +507,7 @@ paths:
           required: true
           schema:
             type: integer
+        - $ref: '#/components/parameters/RequiredAuthorizationSessionHeader'
       responses:
         "200":
           description: Document detail
@@ -507,6 +517,8 @@ paths:
                 $ref: "#/components/schemas/LegalDocument"
         "404":
           description: Not found
+        "401":
+          description: Authentication required
     delete:
       operationId: deleteDocument
       tags: [documents]
@@ -517,14 +529,21 @@ paths:
           required: true
           schema:
             type: integer
+        - $ref: '#/components/parameters/RequiredAuthorizationSessionHeader'
       responses:
         "204":
           description: Deleted
+        "401":
+          description: Authentication required
+        "404":
+          description: Not found
   /documents/generate:
     post:
       operationId: generateDocument
       tags: [documents]
       summary: Generate a legal document using AI
+      parameters:
+        - $ref: '#/components/parameters/RequiredAuthorizationSessionHeader'
       requestBody:
         required: true
         content:
@@ -536,6 +555,8 @@ paths:
           description: SSE stream of generated document
           content:
             text/event-stream: {}
+        "401":
+          description: Authentication required
 components:
   parameters:
     AuthorizationSessionHeader:

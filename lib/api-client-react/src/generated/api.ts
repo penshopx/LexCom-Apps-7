@@ -17,8 +17,11 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AgenticConversation,
+  AgenticMessage,
   AuthUserEnvelope,
   BeginBrowserLoginParams,
+  CreateAgenticConversationBody,
   CreateCaseBody,
   CreateDocumentBody,
   CreateOpenaiConversationBody,
@@ -647,6 +650,257 @@ export const useLogoutMobileSession = <
 > => {
   return useMutation(getLogoutMobileSessionMutationOptions(options));
 };
+
+/**
+ * Returns all agentic conversations linked to the authenticated user, ordered newest first. Authentication is required.
+ * @summary List conversations for the authenticated user
+ */
+export const getListAgenticConversationsUrl = () => {
+  return `/api/agentic/conversations`;
+};
+
+export const listAgenticConversations = async (
+  options?: RequestInit,
+): Promise<AgenticConversation[]> => {
+  return customFetch<AgenticConversation[]>(getListAgenticConversationsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAgenticConversationsQueryKey = () => {
+  return [`/api/agentic/conversations`] as const;
+};
+
+export const getListAgenticConversationsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAgenticConversations>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAgenticConversations>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListAgenticConversationsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAgenticConversations>>
+  > = ({ signal }) => listAgenticConversations({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAgenticConversations>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAgenticConversationsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAgenticConversations>>
+>;
+export type ListAgenticConversationsQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary List conversations for the authenticated user
+ */
+
+export function useListAgenticConversations<
+  TData = Awaited<ReturnType<typeof listAgenticConversations>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAgenticConversations>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAgenticConversationsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a new agentic conversation
+ */
+export const getCreateAgenticConversationUrl = () => {
+  return `/api/agentic/conversations`;
+};
+
+export const createAgenticConversation = async (
+  createAgenticConversationBody?: CreateAgenticConversationBody,
+  options?: RequestInit,
+): Promise<AgenticConversation> => {
+  return customFetch<AgenticConversation>(getCreateAgenticConversationUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createAgenticConversationBody),
+  });
+};
+
+export const getCreateAgenticConversationMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAgenticConversation>>,
+    TError,
+    { data: BodyType<CreateAgenticConversationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createAgenticConversation>>,
+  TError,
+  { data: BodyType<CreateAgenticConversationBody> },
+  TContext
+> => {
+  const mutationKey = ["createAgenticConversation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createAgenticConversation>>,
+    { data: BodyType<CreateAgenticConversationBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createAgenticConversation(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateAgenticConversationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createAgenticConversation>>
+>;
+export type CreateAgenticConversationMutationBody =
+  BodyType<CreateAgenticConversationBody>;
+export type CreateAgenticConversationMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Create a new agentic conversation
+ */
+export const useCreateAgenticConversation = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAgenticConversation>>,
+    TError,
+    { data: BodyType<CreateAgenticConversationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createAgenticConversation>>,
+  TError,
+  { data: BodyType<CreateAgenticConversationBody> },
+  TContext
+> => {
+  return useMutation(getCreateAgenticConversationMutationOptions(options));
+};
+
+/**
+ * @summary Get all messages in an agentic conversation
+ */
+export const getListAgenticMessagesUrl = (id: number) => {
+  return `/api/agentic/conversations/${id}/messages`;
+};
+
+export const listAgenticMessages = async (
+  id: number,
+  options?: RequestInit,
+): Promise<AgenticMessage[]> => {
+  return customFetch<AgenticMessage[]>(getListAgenticMessagesUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAgenticMessagesQueryKey = (id: number) => {
+  return [`/api/agentic/conversations/${id}/messages`] as const;
+};
+
+export const getListAgenticMessagesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAgenticMessages>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAgenticMessages>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListAgenticMessagesQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAgenticMessages>>
+  > = ({ signal }) => listAgenticMessages(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAgenticMessages>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAgenticMessagesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAgenticMessages>>
+>;
+export type ListAgenticMessagesQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Get all messages in an agentic conversation
+ */
+
+export function useListAgenticMessages<
+  TData = Awaited<ReturnType<typeof listAgenticMessages>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAgenticMessages>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAgenticMessagesQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary List all conversations
@@ -1562,6 +1816,7 @@ export const useDeleteCase = <
 };
 
 /**
+ * Returns documents owned by the authenticated user.
  * @summary List all documents
  */
 export const getListDocumentsUrl = () => {
@@ -1583,7 +1838,7 @@ export const getListDocumentsQueryKey = () => {
 
 export const getListDocumentsQueryOptions = <
   TData = Awaited<ReturnType<typeof listDocuments>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<void>,
 >(options?: {
   query?: UseQueryOptions<
     Awaited<ReturnType<typeof listDocuments>>,
@@ -1610,7 +1865,7 @@ export const getListDocumentsQueryOptions = <
 export type ListDocumentsQueryResult = NonNullable<
   Awaited<ReturnType<typeof listDocuments>>
 >;
-export type ListDocumentsQueryError = ErrorType<unknown>;
+export type ListDocumentsQueryError = ErrorType<void>;
 
 /**
  * @summary List all documents
@@ -1618,7 +1873,7 @@ export type ListDocumentsQueryError = ErrorType<unknown>;
 
 export function useListDocuments<
   TData = Awaited<ReturnType<typeof listDocuments>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<void>,
 >(options?: {
   query?: UseQueryOptions<
     Awaited<ReturnType<typeof listDocuments>>,
@@ -1656,7 +1911,7 @@ export const createDocument = async (
 };
 
 export const getCreateDocumentMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1697,13 +1952,13 @@ export type CreateDocumentMutationResult = NonNullable<
   Awaited<ReturnType<typeof createDocument>>
 >;
 export type CreateDocumentMutationBody = BodyType<CreateDocumentBody>;
-export type CreateDocumentMutationError = ErrorType<unknown>;
+export type CreateDocumentMutationError = ErrorType<void>;
 
 /**
  * @summary Create a new legal document
  */
 export const useCreateDocument = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1827,7 +2082,7 @@ export const deleteDocument = async (
 };
 
 export const getDeleteDocumentMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1868,13 +2123,13 @@ export type DeleteDocumentMutationResult = NonNullable<
   Awaited<ReturnType<typeof deleteDocument>>
 >;
 
-export type DeleteDocumentMutationError = ErrorType<unknown>;
+export type DeleteDocumentMutationError = ErrorType<void>;
 
 /**
  * @summary Delete a document
  */
 export const useDeleteDocument = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1913,7 +2168,7 @@ export const generateDocument = async (
 };
 
 export const getGenerateDocumentMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1954,13 +2209,13 @@ export type GenerateDocumentMutationResult = NonNullable<
   Awaited<ReturnType<typeof generateDocument>>
 >;
 export type GenerateDocumentMutationBody = BodyType<GenerateDocumentBody>;
-export type GenerateDocumentMutationError = ErrorType<unknown>;
+export type GenerateDocumentMutationError = ErrorType<void>;
 
 /**
  * @summary Generate a legal document using AI
  */
 export const useGenerateDocument = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<

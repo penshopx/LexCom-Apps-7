@@ -168,7 +168,7 @@ Panduan:
 
 router.get("/agentic/conversations", async (req, res) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?.id ?? null;
     if (!userId) {
       res.status(401).json({ error: "Authentication required" });
       return;
@@ -221,7 +221,7 @@ function canAccessConversation(conv: { userId: string | null }, requestUserId: s
 
 router.post("/agentic/conversations/:id/chat", async (req, res) => {
   try {
-    const requestUserId = req.user?.id ?? null;
+    const requestUserId = req.user?.id;
     if (!requestUserId) {
       res.status(401).json({ error: "Authentication required" });
       return;
@@ -246,7 +246,9 @@ router.post("/agentic/conversations/:id/chat", async (req, res) => {
       res.status(403).json({ error: "Forbidden" });
       return;
     }
+
     await db.insert(messages).values({ conversationId: convId, role: "user", content });
+
     const history = await db
       .select()
       .from(messages)
@@ -463,7 +465,7 @@ router.post("/agentic/conversations/:id/chat", async (req, res) => {
 
 router.get("/agentic/conversations/:id/messages", async (req, res) => {
   try {
-    const requestUserId = req.user?.id ?? null;
+    const requestUserId = req.user?.id;
     if (!requestUserId) {
       res.status(401).json({ error: "Authentication required" });
       return;

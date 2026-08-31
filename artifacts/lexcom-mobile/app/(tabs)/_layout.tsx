@@ -24,6 +24,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: 'function', selected: 'function' }} />
         <Label>Kalkulator</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="dokumen">
+        <Icon sf={{ default: 'doc.text', selected: 'doc.text.fill' }} />
+        <Label>Dokumen</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profil">
         <Icon sf={{ default: 'person.circle', selected: 'person.circle.fill' }} />
         <Label>Profil</Label>
@@ -105,6 +109,18 @@ function ClassicTabLayout() {
               <SymbolView name="function" tintColor={color} size={24} />
             ) : (
               <Feather name="sliders" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="dokumen"
+        options={{
+          title: 'Dokumen',
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="doc.text" tintColor={color} size={24} />
+            ) : (
+              <Ionicons name="document-text-outline" size={22} color={color} />
             ),
         }}
       />

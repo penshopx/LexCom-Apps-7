@@ -59,6 +59,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     discovery,
   );
 
+  async function clearLocalSession() {
+    try { await SecureStore.deleteItemAsync(TOKEN_KEY); } catch { /* ignore */ }
+    setToken(null);
+    setUser(null);
+  }
+
   // Load stored token on mount
   useEffect(() => {
     (async () => {
@@ -109,9 +115,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch(`${getApiBase()}/auth/user`, {
         headers: { Authorization: `Bearer ${sid}` },
       });
+      if (res.status === 401) {
+        await clearLocalSession();
+        return;
+      }
       if (!res.ok) return;
       const data = await res.json() as { user: AuthUser | null };
-      setUser(data.user ?? null);
+      if (!data.user) {
+        await clearLocalSession();
+        return;
+      }
+      setUser(data.user);
     } catch {
       // ignore
     }
@@ -131,9 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       } catch { /* ignore */ }
     }
-    try { await SecureStore.deleteItemAsync(TOKEN_KEY); } catch { /* ignore */ }
-    setToken(null);
-    setUser(null);
+    await clearLocalSession();
   }, [token]);
 
   return (
