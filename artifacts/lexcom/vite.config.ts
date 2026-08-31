@@ -27,6 +27,19 @@ if (!basePath) {
   );
 }
 
+const offlineFallback = {
+  urlPattern: ({ request }: { request: Request }) =>
+    request.mode === "navigate",
+  handler: "NetworkFirst" as const,
+  options: {
+    cacheName: "lexcom-pages",
+    networkTimeoutSeconds: 5,
+    precacheFallback: {
+      fallbackURL: `${basePath}offline.html`,
+    },
+  },
+};
+
 export default defineConfig({
   base: basePath,
   plugins: [
@@ -70,12 +83,12 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,jpg,woff,woff2}"],
-        navigateFallback: `${basePath}index.html`,
-        navigateFallbackDenylist: [/^\/api\//],
+        navigateFallback: undefined,
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
         runtimeCaching: [
+          offlineFallback,
           {
             urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
             handler: "CacheFirst",
