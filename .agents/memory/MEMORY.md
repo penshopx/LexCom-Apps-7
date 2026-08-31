@@ -4,3 +4,4 @@
 - [Merged route integrity](merged-route-integrity.md) — after merged API route work, verify both build and endpoint-specific tests; route boundaries and test URLs can drift independently
 - [PWA offline fallback](pwa-offline-fallback.md) — Workbox 7 needs a precache fallback plugin; disable Vite PWA's default SPA fallback so it cannot shadow offline navigation
 - [Route splitting strategy](route-splitting-strategy.md) — prefer route-level lazy imports; broad vendor chunks increase LexCom's startup payload despite smaller individual chunks
+- [SVG splash rasterization](svg-splash-rasterization.md) — scale embedded logo art with a nested viewBox; shell-rounded SVG scale factors can silently create oversized white regions
