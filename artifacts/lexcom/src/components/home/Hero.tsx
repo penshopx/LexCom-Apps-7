@@ -56,7 +56,7 @@ export function Hero() {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl leading-relaxed"
           >
-            Orkestrasi 19 spesialis AI untuk riset, drafting, telaah paralel, perkara, kepatuhan, dan edukasi—dengan lapisan pemeriksaan sumber sebelum hasil digunakan.
+            Akses 19 spesialis AI untuk riset, drafting, telaah, perkara, kepatuhan, dan edukasi. Sebelas agen inti dapat dikolaborasikan, dengan rujukan kandidat untuk diperiksa pada sumber resmi.
           </motion.p>
 
           <motion.div

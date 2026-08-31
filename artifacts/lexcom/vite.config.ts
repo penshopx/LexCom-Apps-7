@@ -39,7 +39,7 @@ export default defineConfig({
       manifest: {
         name: "LexCom - Agentic AI untuk Hukum Indonesia",
         short_name: "LexCom",
-        description: "Platform LegalTech terdepan di Indonesia yang mengintegrasikan AI agentic dengan keahlian hukum praktis.",
+        description: "Legal AI Operating System Indonesia untuk riset, telaah, drafting, perkara, dan pemeriksaan sumber.",
         lang: "id",
         theme_color: "#7c3aed",
         background_color: "#0f1117",

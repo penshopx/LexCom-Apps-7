@@ -403,7 +403,7 @@ export default function LexBot() {
                   <Cpu className="w-3 h-3" /> Orchestrator Agent
                 </Badge>
                 <Badge variant="outline" className="text-xs gap-1 border-blue-500/30 text-blue-400">
-                  <Bot className="w-3 h-3" /> 11 Specialist Agents
+                  <Bot className="w-3 h-3" /> 19 Profil Agen Langsung
                 </Badge>
                 <Badge variant="outline" className="text-xs gap-1 border-green-500/30 text-green-400">
                   <Sparkles className="w-3 h-3" /> Function Calling AI

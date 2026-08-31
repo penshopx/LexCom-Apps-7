@@ -120,7 +120,7 @@ const LAYANAN = [
     icon: FileText,
     title: "Studio Opini Hukum AI",
     subtitle: "Opini Profesional Rp5jt → Kini Tak Terbatas",
-    desc: "Generator opini hukum profesional berformat IRAC — dalam hitungan menit, bukan minggu. Mencakup 6 bidang hukum, terintegrasi dengan 53+ regulasi aktif dan 30.000+ putusan MA.",
+    desc: "Buat draf awal opini hukum berformat IRAC untuk ditinjau profesional. Semua regulasi dan putusan yang disebut AI tetap perlu diperiksa.",
     features: ["Format IRAC standar firma hukum", "6 bidang: korporasi, properti, pajak, pidana bisnis, dll", "Dasar hukum & yurisprudensi otomatis", "Unduh PDF profesional"],
     link: "/studio-opini",
     cta: "Buat Opini Sekarang",
@@ -147,7 +147,7 @@ const LAYANAN = [
     title: "Perpustakaan Hukum Digital",
     subtitle: "96+ E-Book Hukum Terintegrasi AI",
     desc: "Koleksi 96+ e-book dan panduan hukum Indonesia dalam 12 bidang. Bukan PDF biasa — setiap buku dapat dicari semantik dengan AI, ditanya, dan langsung diintegrasikan ke kasus yang sedang dikerjakan.",
-    features: ["96+ e-book 12 bidang hukum", "Pencarian semantik AI lintas buku", "Tanya-jawab AI per buku", "Integrasi langsung ke kasus & dokumen"],
+    features: ["Katalog materi belajar", "Pencarian berbasis prompt", "Tanya-jawab AI per buku", "Periksa sumber asli"],
     link: "/perpustakaan",
     cta: "Buka Perpustakaan",
     badge: "Baru",
@@ -171,7 +171,7 @@ const LAYANAN = [
   {
     icon: Archive,
     title: "Vault Template 1.500+",
-    subtitle: "Template Dokumen Hukum Terlengkap di Indonesia",
+    subtitle: "Koleksi Template Dokumen Hukum",
     desc: "1.500+ template siap pakai dalam 8 kategori: litigasi, perjanjian, akta notariil, ketenagakerjaan, peradilan khusus, surat & somasi, dokumen korporat, dan properti — semua dapat di-generate AI dalam 60 detik.",
     features: ["500+ surat & perjanjian hukum", "1.000+ akta notariil", "AI auto-fill berdasarkan fakta kasus", "Unduh DOC + PDF siap tanda tangan"],
     link: "/vault",
@@ -224,11 +224,11 @@ const LAYANAN = [
     icon: Scale,
     title: "Database Peraturan",
     subtitle: "Hukum Positif Indonesia",
-    desc: "Akses database peraturan perundang-undangan Indonesia: UU, PP, Perpres, Permen, dan Perda. Termasuk KUHP Baru (UU 1/2023) yang berlaku 2026.",
-    features: ["50+ peraturan terupdate", "KUHP 2026 tersedia", "Filter & pencarian canggih", "Ringkasan & isi pokok"],
+    desc: "Telusuri katalog lokal UU, PP, Perpres, dan Permen sebagai titik awal, lalu periksa dokumen pada portal resmi.",
+    features: ["Katalog referensi kurasi", "KUHP Baru tersedia", "Filter & pencarian", "Tautan portal resmi"],
     link: "/peraturan",
     cta: "Cari Peraturan",
-    badge: "Update KUHP 2026",
+    badge: "Katalog Kurasi",
     color: "border-green-500/30 bg-green-500/5",
     badgeColor: "bg-green-500/20 text-green-400",
     iconBg: "bg-green-500/10 text-green-400",
@@ -238,7 +238,7 @@ const LAYANAN = [
     title: "Yurisprudensi & Putusan",
     subtitle: "Database Putusan Pengadilan",
     desc: "Telusuri putusan landmark dari Mahkamah Konstitusi, Mahkamah Agung, Pengadilan Negeri, dan Pengadilan Agama.",
-    features: ["MK, MA, PN, PA", "Yurisprudensi MA terbaru", "Amar putusan lengkap", "Filter per tahun & jenis"],
+    features: ["MK, MA, PN, PA", "Koleksi kandidat putusan", "Ringkasan katalog", "Filter per tahun & jenis"],
     link: "/putusan",
     cta: "Lihat Putusan",
     badge: null,
@@ -276,8 +276,8 @@ const LAYANAN = [
     icon: BookOpen,
     title: "Glosarium Hukum",
     subtitle: "Kamus Istilah Hukum",
-    desc: "200+ istilah hukum Indonesia dengan definisi lengkap, contoh penerapan, dan dasar hukum. Dari A–Z untuk semua cabang hukum.",
-    features: ["200+ istilah tersedia", "Semua cabang hukum", "Filter per kategori", "Pencarian instan A–Z"],
+    desc: "Jelajahi istilah hukum Indonesia dengan definisi ringkas dan contoh penerapan untuk pembelajaran awal.",
+    features: ["Katalog istilah", "Beragam cabang hukum", "Filter per kategori", "Pencarian A–Z"],
     link: "/glosarium",
     cta: "Buka Glosarium",
     badge: "Baru",
@@ -288,9 +288,9 @@ const LAYANAN = [
   {
     icon: Users,
     title: "Direktori Pengacara",
-    subtitle: "Temukan Pengacara Terpercaya",
-    desc: "Direktori pengacara berlisensi di seluruh Indonesia. Filter berdasarkan spesialisasi, kota, dan ulasan klien.",
-    features: ["Pengacara terverifikasi", "Filter spesialisasi", "Rating & ulasan", "Kontak langsung"],
+    subtitle: "Jelajahi Profil Praktisi",
+    desc: "Direktori profil untuk eksplorasi awal. Identitas, izin praktik, pengalaman, dan kecocokan tetap perlu diperiksa langsung.",
+    features: ["Profil katalog", "Filter spesialisasi", "Informasi ringkas", "Verifikasi mandiri diperlukan"],
     link: "/pengacara#direktori",
     cta: "Cari Pengacara",
     badge: null,
@@ -302,8 +302,8 @@ const LAYANAN = [
     icon: MessageSquare,
     title: "Forum Hukum",
     subtitle: "Komunitas & Diskusi",
-    desc: "Bergabung dengan ribuan praktisi dan mahasiswa hukum. Ajukan pertanyaan, berbagi pengalaman, dan berdiskusi tentang isu hukum terkini.",
-    features: ["Forum berdasarkan kategori", "Thread & reply", "Komunitas aktif", "Moderasi profesional"],
+    desc: "Gunakan ruang diskusi berdasarkan kategori untuk bertanya, berbagi pengalaman, dan membahas isu hukum.",
+    features: ["Forum berdasarkan kategori", "Thread & reply", "Diskusi komunitas", "Laporkan konten bermasalah"],
     link: "/forum",
     cta: "Masuk Forum",
     badge: null,
@@ -316,7 +316,7 @@ const LAYANAN = [
     title: "Panduan Hukum",
     subtitle: "Artikel & Tutorial",
     desc: "Panduan langkah demi langkah tentang prosedur hukum: cara gugat perdata, hak tersangka, pembuatan PT, sengketa tanah, dan banyak lagi.",
-    features: ["30+ artikel panduan", "Bahasa mudah dipahami", "Update berkala", "Kategori lengkap"],
+    features: ["Katalog panduan", "Bahasa mudah dipahami", "Materi kurasi", "Filter kategori"],
     link: "/panduan",
     cta: "Baca Panduan",
     badge: null,
@@ -368,7 +368,7 @@ const LAYANAN = [
     title: "Riset AI Hub",
     subtitle: "Riset Hukum Multi-Agen",
     desc: "Jalankan riset hukum mendalam dengan 4 agen AI secara paralel: Legal Researcher, Criminal Defense, Corporate Lawyer, dan Legal Drafter — hasil komprehensif dalam satu tampilan.",
-    features: ["4 agen AI paralel", "Pencarian semantik", "Ringkasan multi-perspektif", "Copy & share hasil riset"],
+    features: ["4 agen AI paralel", "Pencarian berbasis prompt", "Ringkasan multi-perspektif", "Salin hasil riset"],
     link: "/riset-ai",
     cta: "Mulai Riset",
     badge: "Pro",
@@ -393,8 +393,8 @@ const LAYANAN = [
     icon: BarChart3,
     title: "Intelijen Regulasi AI",
     subtitle: "Pemantauan Dampak Regulasi Bisnis",
-    desc: "Pantau 14+ isu regulasi bisnis Indonesia secara real-time: skor risiko kepatuhan (0–100), analisis AI mendalam, checklist kepatuhan interaktif, dan tanya pakar regulasi AI.",
-    features: ["14 isu regulasi aktif", "Skor risiko 0-100 per isu", "Checklist kepatuhan interaktif", "Tanya Pakar Regulasi AI"],
+    desc: "Jelajahi snapshot isu regulasi bisnis dari dataset kurasi, lengkap dengan skor prioritas indikatif, checklist, dan simulasi tanya AI.",
+    features: ["Dataset isu kurasi", "Skor prioritas indikatif", "Checklist kepatuhan", "Simulasi tanya regulasi"],
     link: "/intelijen-regulasi",
     cta: "Pantau Regulasi",
     badge: "Baru",
@@ -405,10 +405,10 @@ const LAYANAN = [
 ];
 
 const KEUNGGULAN = [
-  { icon: Shield, title: "Hukum Indonesia", desc: "Semua konten berbasis peraturan hukum positif Indonesia yang terupdate" },
-  { icon: Zap, title: "AI Terdepan", desc: "Teknologi AI terbaru yang memahami konteks dan nuansa hukum Indonesia" },
+  { icon: Shield, title: "Fokus Indonesia", desc: "Alur kerja dan prompt dirancang untuk konteks hukum Indonesia" },
+  { icon: Zap, title: "Multi-Agen", desc: "Perspektif spesialis dapat dijalankan dan disintesis dalam satu workspace" },
   { icon: Clock, title: "Tersedia 24/7", desc: "Akses kapan saja dan di mana saja tanpa perlu menunggu jam kerja" },
-  { icon: Star, title: "Dipercaya Ribuan Pengguna", desc: "Lebih dari 12.000 advokat, mahasiswa, dan profesional hukum" },
+  { icon: Star, title: "Transparansi Bukti", desc: "Hasil AI membedakan rujukan katalog dari status yang perlu diperiksa" },
 ];
 
 export default function Layanan() {
@@ -428,7 +428,7 @@ export default function Layanan() {
             </div>
             <h1 className="font-display text-4xl md:text-5xl font-bold mb-4">Layanan LexCom</h1>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Ekosistem hukum digital terlengkap untuk advokat, konsultan hukum, mahasiswa, dan semua yang membutuhkan akses hukum Indonesia.
+              Satu workspace untuk riset, telaah, drafting, perkara, regulasi, dan eskalasi ke praktisi.
             </p>
           </motion.div>
 

@@ -9,9 +9,9 @@ const PILLARS = [
   {
     icon: Bot,
     title: "Konsultasi AI",
-    subtitle: "Chaesa Lexbot · 19 Agen AI Spesialis · Agentic Chatbots",
+    subtitle: "Chaesa Lexbot · 19 Agen Langsung · 11 Agen Kolaboratif",
     desc: "Orkestrasi multi-agen yang memilih spesialis relevan, menyusun analisis awal, dan menampilkan rujukan yang masih perlu diperiksa.",
-    features: ["Chaesa Lexbot multi-agent orchestrator", "19 AI spesialis bidang hukum", "Respons streaming", "Sintesis lintas perspektif"],
+    features: ["Chaesa Lexbot sebagai pengarah", "19 profil agen spesialis", "Kolaborasi 11 agen inti", "Sintesis lintas perspektif"],
     link: "/lexbot",
     color: "from-violet-500 to-purple-600",
     border: "hover:border-violet-500/40",

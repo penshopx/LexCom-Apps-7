@@ -256,7 +256,7 @@ export default function Pengacara() {
               Pakar Hukum <span className="text-gradient">& Pengacara</span>
             </h1>
             <p className="text-muted-foreground max-w-2xl">
-              Konsultasikan masalah hukum Anda dengan AI pakar bidang hukum Indonesia atau temukan pengacara terverifikasi di seluruh nusantara.
+              Gunakan AI untuk analisis awal atau jelajahi profil praktisi. Periksa identitas, izin praktik, pengalaman, dan kecocokan secara mandiri sebelum menggunakan jasa.
             </p>
           </div>
 

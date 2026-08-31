@@ -73,7 +73,7 @@ export function WorkflowLauncher() {
             <div className="mt-6 rounded-2xl border border-primary/20 bg-primary/8 p-4">
               <p className="text-sm font-semibold text-foreground">Pembeda LexCom</p>
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                Orkestrasi 19 spesialis AI dengan lapisan pemeriksaan sumber dan jalur kerja hukum dalam satu workspace.
+                Sembilan belas profil agen langsung, kolaborasi 11 agen inti, dan penelusuran rujukan kandidat dalam satu workspace.
               </p>
             </div>
           </div>

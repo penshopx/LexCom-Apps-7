@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Navbar } from "@/components/layout/Navbar";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
+import { LegalAnswerTrust } from "@/components/legal/LegalAnswerTrust";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -94,14 +95,6 @@ const ALL_AGENTS: AgentMeta[] = [
   { key: "family",         name: "Family Lawyer AI",            emoji: "👨‍👩‍👧", color: "#ec4899" },
   { key: "realestate",     name: "Real Estate Lawyer AI",       emoji: "🏠", color: "#14b8a6" },
   { key: "personalinjury", name: "Personal Injury Lawyer AI",   emoji: "🩺", color: "#eab308" },
-  { key: "ip",             name: "Intellectual Property AI",    emoji: "💡", color: "#a855f7" },
-  { key: "syariah",        name: "Hukum Syariah AI",            emoji: "🕌", color: "#16a34a" },
-  { key: "tun",            name: "Hukum Adm. Negara AI",        emoji: "🏛️",  color: "#0369a1" },
-  { key: "lingkungan",     name: "Hukum Lingkungan AI",         emoji: "🌿", color: "#15803d" },
-  { key: "persaingan",     name: "Hukum Persaingan Usaha AI",   emoji: "🔍", color: "#b45309" },
-  { key: "researcher",     name: "Legal Researcher AI",         emoji: "🔬", color: "#7c3aed" },
-  { key: "drafter",        name: "Legal Drafter AI",            emoji: "✍️",  color: "#db2777" },
-  { key: "notaris",        name: "Notaris & PPAT AI",           emoji: "📜", color: "#c2410c" },
 ];
 
 const SAMPLE_PROMPTS = [
@@ -826,7 +819,12 @@ function AgentCard({
           >
             <div className="px-4 py-3 bg-card/30">
               {content ? (
-                <MarkdownRenderer content={content} className="text-sm" />
+                <div className="space-y-3">
+                  <MarkdownRenderer content={content} className="text-sm" />
+                  {contribution.agentKey !== "error" && (
+                    <LegalAnswerTrust content={content} compact />
+                  )}
+                </div>
               ) : (
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Loader2 className="w-3 h-3 animate-spin" />
@@ -852,7 +850,10 @@ function SynthesisCard({ synthesis, status }: { synthesis: string; status: "stre
       </div>
       <div className="px-4 py-3 bg-card/40">
         {synthesis ? (
-          <MarkdownRenderer content={synthesis} className="text-sm" />
+          <div className="space-y-3">
+            <MarkdownRenderer content={synthesis} className="text-sm" />
+            <LegalAnswerTrust content={synthesis} compact />
+          </div>
         ) : (
           <div className="flex items-center gap-2 text-muted-foreground">
             <Loader2 className="w-3 h-3 animate-spin" />

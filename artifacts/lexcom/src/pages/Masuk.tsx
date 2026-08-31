@@ -11,10 +11,10 @@ import {
 const BENEFITS = [
   { icon: Bot,          label: "19 Pakar Hukum AI",     desc: "Spesialis pidana, perdata, bisnis, syariah & lebih" },
   { icon: Sparkles,     label: "Studio AI Lengkap",     desc: "Penulis Cerdas, Chatbot Builder, Ebook Builder" },
-  { icon: BookOpen,     label: "Database 53+ Peraturan", desc: "UU, PP, Perpres, Permen terbaru termasuk KUHP Baru" },
-  { icon: Scale,        label: "30+ Putusan Pengadilan", desc: "MA, MK, PN, PA — referensi preseden terlengkap" },
-  { icon: Zap,          label: "Riset AI Instan",       desc: "4 agen paralel meringkas topik hukum dalam sekejap" },
-  { icon: Shield,       label: "Aman & Privat",         desc: "Data terenkripsi, disimpan di server Indonesia" },
+  { icon: BookOpen,     label: "Katalog Peraturan",     desc: "UU, PP, Perpres, Permen, dan tautan portal resmi" },
+  { icon: Scale,        label: "Katalog Putusan",       desc: "Kandidat MA, MK, PN, dan PA untuk penelusuran awal" },
+  { icon: Zap,          label: "Riset Multi-Agen",      desc: "4 perspektif AI dirangkum dalam satu tampilan" },
+  { icon: Shield,       label: "Pemeriksaan Sumber",    desc: "Status katalog dibedakan dari verifikasi resmi" },
 ];
 
 const USERS = [
@@ -28,7 +28,7 @@ const FREE_FEATURES = [
   "Chaesa Lexbot (konsultasi hukum dasar)",
   "Database peraturan, putusan & panduan",
   "6 kalkulator hukum (pesangon, waris, dll)",
-  "Glosarium 120+ istilah hukum",
+  "Glosarium istilah hukum",
   "Forum komunitas hukum",
 ];
 
@@ -52,7 +52,7 @@ export default function Masuk() {
             {/* Left — Info */}
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }}>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-medium mb-5">
-                <Sparkles className="w-3.5 h-3.5" /> Platform AI Hukum Terlengkap Indonesia
+                <Sparkles className="w-3.5 h-3.5" /> Legal AI Operating System Indonesia
               </div>
 
               <h1 className="font-display text-4xl md:text-5xl font-bold leading-tight mb-4">
@@ -61,12 +61,12 @@ export default function Masuk() {
               </h1>
 
               <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
-                Akses 19 Pakar AI Hukum, Studio Penulisan, Chatbot Builder, Riset AI, dan database hukum terlengkap Indonesia — mulai gratis, tanpa kartu kredit.
+                Mulai dari launcher berbasis pekerjaan, gunakan agen spesialis, dan periksa rujukan sebelum hasil AI dipakai untuk keputusan hukum.
               </p>
 
               {/* Free features list */}
               <div className="glass-card rounded-2xl p-5 mb-6">
-                <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-3">Gratis Selamanya:</p>
+                <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-3">Fitur Eksplorasi Gratis:</p>
                 <div className="space-y-2">
                   {FREE_FEATURES.map((f, i) => (
                     <div key={i} className="flex items-center gap-2.5">
@@ -155,12 +155,12 @@ export default function Masuk() {
                 </div>
               </div>
 
-              {/* Social proof */}
+              {/* Product facts */}
               <div className="flex items-center justify-center gap-6 mt-5 text-center">
                 {[
-                  { num: "10.000+", label: "Pengguna" },
-                  { num: "4.9★", label: "Rating" },
-                  { num: "53+", label: "Peraturan" },
+                  { num: "19", label: "Agen AI" },
+                  { num: "5", label: "Agen Telaah" },
+                  { num: "6", label: "Alur Kerja" },
                 ].map((s, i) => (
                   <div key={i}>
                     <p className="text-xl font-bold text-gradient">{s.num}</p>

@@ -466,7 +466,7 @@ export default function IntelijenRegulasi() {
                 </span>
               </h1>
               <p className="text-sm text-muted-foreground max-w-xl leading-relaxed">
-                Pemantauan dampak regulasi hukum Indonesia secara real-time — analisis isu bisnis, skor risiko kepatuhan, dan rekomendasi tindakan berbasis AI untuk pelaku usaha teknologi, digital, dan data.
+                Snapshot kurasi isu regulasi untuk membantu triase awal. Skor bersifat indikatif dan bukan pemantauan perubahan hukum secara real-time.
               </p>
             </div>
 
@@ -562,7 +562,7 @@ export default function IntelijenRegulasi() {
                   {issueSortOpen && (
                     <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }}
                       className="absolute right-0 top-full mt-1 w-36 glass-panel rounded-xl border border-white/10 p-1 z-20">
-                      {[["skor", "Skor Risiko"], ["terbaru", "Terbaru"]].map(([v, l]) => (
+                      {[["skor", "Skor Risiko"], ["terbaru", "Pembaruan Dataset"]].map(([v, l]) => (
                         <button key={v} onClick={() => { setSortBy(v as "skor" | "terbaru"); setIssueSortOpen(false); }}
                           className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors ${sortBy === v ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-white/5"}`}>
                           {l}

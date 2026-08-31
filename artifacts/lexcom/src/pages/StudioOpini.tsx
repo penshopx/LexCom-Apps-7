@@ -58,7 +58,7 @@ const PRICE_COMPARISON = [
 
 const FAQ_STUDIO = [
   { q: "Apakah opini hukum yang dihasilkan AI dapat langsung digunakan secara resmi?", a: "Opini hukum dari Studio Opini AI berfungsi sebagai kerangka analisis profesional yang sangat lengkap dan siap dipakai. Untuk keperluan formal (pengajuan ke pengadilan, pihak ketiga, atau klien institusional), disarankan untuk ditinjau dan ditandatangani oleh advokat terdaftar sebagai advisor. Produk AI LexCom adalah alat bantu, bukan pengganti tanggung jawab hukum advokat." },
-  { q: "Apakah fakta perkara saya aman dan terjaga kerahasiaannya?", a: "Ya. Seluruh data yang Anda masukkan di Studio Opini dienkripsi end-to-end dengan AES-256. LexCom tidak menyimpan data perkara klien untuk melatih AI, tidak membagikan data ke pihak ketiga, dan seluruh sesi dapat dihapus permanen kapan saja dari akun Anda." },
+  { q: "Bagaimana saya menangani fakta perkara yang sensitif?", a: "Gunakan fakta minimum yang diperlukan, samarkan identitas, dan jangan memasukkan rahasia klien atau dokumen yang belum boleh diproses layanan AI. Periksa kebijakan privasi dan aturan profesi sebelum memakai hasil untuk pekerjaan klien." },
   { q: "Berapa lama proses generate opini hukum?", a: "Rata-rata 60–120 detik untuk opini standar 4–6 halaman. Opini yang membutuhkan analisis lintas-bidang atau melibatkan yurisprudensi yang kompleks mungkin memerlukan 2–4 menit. Semua proses berjalan di background — Anda akan mendapat notifikasi ketika selesai." },
   { q: "Apakah AI dapat membuat opini dalam format bilingual (Indonesia-Inggris)?", a: "Ya, Studio Opini AI mendukung output bilingual (Bahasa Indonesia dan Bahasa Inggris) untuk kebutuhan transaksi internasional, kontrak lintas batas, atau arbitrase internasional. Pilih opsi bahasa di langkah Generate sebelum proses dimulai." },
   { q: "Berapa banyak opini yang bisa dibuat per bulan?", a: "Paket Gratis: 3 opini/bulan (dengan watermark). Paket Starter: 15 opini/bulan. Paket Pro: tak terbatas. Paket Advokat: tak terbatas + fitur kolaborasi tim dan branding firma hukum pada output opini." },
@@ -378,8 +378,8 @@ export default function StudioOpini() {
                       </div>
                     ))}
                     <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-                      <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1">✅ Verifikasi AI</p>
-                      <p className="text-xs text-muted-foreground">Opini ini telah diverifikasi terhadap 53+ regulasi aktif dan 30.000+ putusan MA dalam basis data LexCom per 29 Maret 2026.</p>
+                      <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1">Pemeriksaan Rujukan</p>
+                      <p className="text-xs text-muted-foreground">Rujukan dalam draf ini adalah kandidat. Periksa nomor, pasal, isi, dan statusnya pada portal resmi sebelum digunakan.</p>
                     </div>
                   </div>
                 </div>
@@ -405,16 +405,16 @@ export default function StudioOpini() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <h2 className="text-2xl font-black text-foreground mb-2">Opini Hukum Standar Profesional</h2>
-            <p className="text-muted-foreground text-sm">Setiap opini mencakup komponen analisis hukum yang lengkap — sama seperti yang dibuat firma hukum kelas satu.</p>
+            <p className="text-muted-foreground text-sm">Setiap draf mengikuti struktur analisis hukum yang konsisten dan tetap memerlukan pemeriksaan profesional.</p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
               { emoji: "⚖️", title: "Kerangka IRAC", desc: "Issue, Rule, Analysis, Conclusion — standar penulisan opini hukum profesional internasional" },
-              { emoji: "📚", title: "Dasar Hukum Lengkap", desc: "Mengacu pada 53+ peraturan aktif, UU terbaru, PP, Permen, dan regulasi turunan yang berlaku" },
-              { emoji: "🏛️", title: "Yurisprudensi Relevan", desc: "Terintegrasi dengan 30.000+ putusan MA, MK, dan pengadilan lainnya sebagai preseden" },
-              { emoji: "🔒", title: "Kerahasiaan Klien", desc: "Semua input fakta dienkripsi end-to-end. Tidak ada data klien yang dibagikan ke pihak ketiga" },
-              { emoji: "📄", title: "Format Profesional", desc: "Output siap cetak dalam format standar — kop surat, penomoran, dan tanda tangan digital tersedia" },
-              { emoji: "⚡", title: "Revisi Tak Terbatas", desc: "Minta revisi, tambah isu hukum, atau perbarui analisis kapan saja dalam hitungan detik" },
+              { emoji: "📚", title: "Dasar Hukum Terstruktur", desc: "Rujukan AI ditampilkan sebagai kandidat yang perlu diperiksa pada sumber resmi" },
+              { emoji: "🏛️", title: "Kandidat Yurisprudensi", desc: "Nomor putusan dari AI tidak dianggap sebagai fakta sebelum diverifikasi" },
+              { emoji: "🔒", title: "Minimalkan Data Sensitif", desc: "Samarkan identitas dan masukkan hanya fakta minimum yang diperlukan" },
+              { emoji: "📄", title: "Format Terarah", desc: "Draf tersusun dalam bagian yang mudah ditinjau, disalin, dan disempurnakan" },
+              { emoji: "⚡", title: "Iterasi Berbasis Prompt", desc: "Minta revisi atau penajaman isu, lalu periksa kembali setiap perubahan" },
             ].map((f) => (
               <div key={f.title} className="rounded-2xl border border-white/8 bg-white/3 p-5">
                 <span className="text-2xl">{f.emoji}</span>

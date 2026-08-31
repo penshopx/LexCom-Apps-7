@@ -64,7 +64,7 @@ Jawaban final ke user
 - Cocok untuk: pertanyaan hukum kompleks lintas-bidang
 
 **3. Agent Chat Individual (/agents)** — Konsultasi Langsung ke Satu Agen
-- Butuh login, 11 agen tersedia sebagai kartu
+- Butuh login, 19 profil agen tersedia sebagai kartu
 - Chat langsung dengan satu agen spesifik tanpa orchestrator
 - Cocok untuk: pertanyaan spesifik satu bidang hukum
 
@@ -112,29 +112,29 @@ LexCom menggunakan OpenAI Function Calling (disebut juga "tool use") untuk:
 
 ---
 
-## 📱 FITUR-FITUR PLATFORM LENGKAP (40+ fitur)
+## 📱 FITUR UTAMA PLATFORM
 
 ### 🤖 KONSULTASI AI
 1. **Chaesa Lexbot** (/lexbot) — Asisten AI multi-agen utama, floating widget ✨ di semua halaman, GRATIS tanpa login
 2. **Agentic AI Chat** (/agentic-chatbots) — Multi-agen berkolaborasi (pilih 1-3 agen), mode Otomatis/Manual (butuh login)
 3. **19 Pakar Hukum AI** (/agents) — Konsultasi langsung satu agen spesifik (butuh login)
-4. **Advokat OS** (/advokat-os) — Sistem operasi lengkap khusus advokat profesional: case management, time billing, client portal (butuh login)
+4. **Advokat OS** (/advokat-os) — Antarmuka modul operasional advokat; sebagian kemampuan masih berupa demonstrasi atau dalam pengembangan
 
 ### 🧠 RISET & INTELIJEN AI
-5. **Riset AI Hub** (/riset-ai) — Pencarian semantik, ringkasan multi-agen, analisis lintas-putusan
-6. **Telaah Dokumen AI** (/telaah-dokumen) — Upload dokumen, review oleh 5 agen AI paralel (kontrak, gugatan, perjanjian)
-7. **Peta Preseden** (/peta-preseden) — Visualisasi jaringan yurisprudensi: hubungan antar putusan MK/MA/PN
-8. **Intelijen Regulasi** (/intelijen-regulasi) — Skor risiko kepatuhan bisnis, dampak regulasi, monitoring perubahan UU
+5. **Riset AI Hub** (/riset-ai) — Pencarian berbasis prompt dan ringkasan dari 4 perspektif AI; rujukan tetap perlu diperiksa
+6. **Telaah Dokumen AI** (/telaah-dokumen) — Tempel teks dokumen untuk ditinjau 5 agen AI paralel
+7. **Peta Preseden** (/peta-preseden) — Jaringan kandidat perkara MA/MK dari katalog lokal, bukan knowledge graph resmi
+8. **Intelijen Regulasi** (/intelijen-regulasi) — Snapshot dataset isu dan skor indikatif, bukan monitoring perubahan hukum real-time
 
 ### ✍️ STUDIO AI KREATIF
 9. **Penulis Cerdas** (/penulis-cerdas) — Artikel hukum, opini, skripsi, laporan penelitian berbasis AI
 10. **Chatbot Builder** (/chatbot-builder) — Bangun chatbot hukum kustom untuk website firma/perusahaan
 11. **Ebook Builder** (/ebook-builder) — Buat modul, panduan, dan buku hukum digital secara AI
-12. **Studio Opini Hukum AI** (/studio-opini) — Generate opini hukum profesional (IRAC: Issue-Rule-Analysis-Conclusion), 6 bidang hukum, output siap pakai. Bilingual Indonesia-Inggris. Paket Pro: tak terbatas.
+12. **Studio Opini Hukum AI** (/studio-opini) — Membuat draf awal berkerangka IRAC yang tetap memerlukan pemeriksaan profesional
 
 ### 📁 MANAJEMEN & LEGAL OPS
-13. **Vault Template** (/vault) — 1.500+ template dokumen hukum siap pakai: kontrak, gugatan, akta PT, PPJB, MOU, NDA, dan lainnya. Dikategorikan per bidang hukum, update rutin.
-14. **Legal Ops Suite** (/legal-ops) — 6 modul corporate legal: contract lifecycle, litigation tracker, compliance calendar, counsel management, legal spend analytics, risk matrix
+13. **Vault Template** (/vault) — Koleksi template kurasi untuk dijadikan titik awal dan diperiksa kembali
+14. **Legal Ops Suite** (/legal-ops) — Antarmuka modul corporate legal; sebagian kemampuan masih dalam pengembangan
 15. **Generator Dokumen AI** (/documents) — Draft dokumen hukum otomatis: Gugatan, Kontrak, Perjanjian, Kuasa, dll (butuh login)
 16. **Manajemen Perkara** (/cases) — Kelola perkara, jadwal sidang, dokumen, tenggat waktu (butuh login)
 
@@ -144,11 +144,11 @@ LexCom menggunakan OpenAI Function Calling (disebut juga "tool use") untuk:
 19. **Klinik PKPU & Kepailitan** (/klinik-pkpu) — Panduan PKPU & Pailit (UU 37/2004): 5 tahap alur, kalkulator voting kuorum Pasal 281 (cek apakah perdamaian sah), generator dokumen kurator. Gratis.
 
 ### 📚 DATABASE HUKUM
-19. **Peraturan** (/peraturan) — 53+ UU, PP, Perpres, Permen lengkap. Termasuk KUHP Baru (UU No. 1/2023) yang efektif 2 Januari 2026. Gratis.
-20. **Putusan** (/putusan) — 30.000+ putusan MK, MA, PN, PA, dengan ringkasan AI. Gratis.
-21. **Panduan Hukum** (/panduan) — 30+ panduan prosedur hukum step-by-step (gugatan, cerai, waris, dll). Gratis.
-22. **Glosarium** (/glosarium) — 120+ istilah hukum Indonesia beserta penjelasan. Gratis.
-23. **Perpustakaan Hukum Digital** (/perpustakaan) — 96+ e-book & buku teks hukum (pidana, perdata, tata negara, bisnis), jurnal hukum, AI Tanya Jawab buku. Gratis.
+19. **Peraturan** (/peraturan) — Katalog lokal UU, PP, Perpres, dan Permen dengan tautan portal resmi; status berlaku belum divalidasi otomatis
+20. **Putusan** (/putusan) — Katalog lokal kandidat putusan MK, MA, PN, dan PA; metadata perlu diperiksa pada direktori resmi
+21. **Panduan Hukum** (/panduan) — Katalog panduan prosedur hukum untuk pembelajaran awal
+22. **Glosarium** (/glosarium) — Katalog istilah hukum Indonesia
+23. **Perpustakaan Hukum Digital** (/perpustakaan) — Katalog materi belajar; ketersediaan dan isi sumber perlu diperiksa
 
 ### 🧮 KALKULATOR HUKUM
 24. **Kalkulator Hukum** (/kalkulator) — 6 kalkulator: pesangon PP 35/2021, waris, denda keterlambatan, biaya perkara, bunga, dll. Gratis.
@@ -156,28 +156,26 @@ LexCom menggunakan OpenAI Function Calling (disebut juga "tool use") untuk:
 26. **Kalkulator Voting PKPU** (di /klinik-pkpu) — Hitung kuorum voting perdamaian Pasal 281 UU 37/2004: cek apakah jumlah & nilai tagihan yang setuju memenuhi syarat.
 
 ### 🎓 PENDIDIKAN HUKUM
-27. **Kursus Online** (/kursus) — Kursus hukum bersertifikat. Gratis.
+27. **Kursus Online** (/kursus) — Materi belajar hukum dalam platform
 28. **Akademi Advokat** (/akademi-advokat) — Pendidikan lanjut khusus advokat: UPA prep, CPD, etika profesi, SOP, retainer builder.
-29. **BimTek Profesi Hukum** (/bimtek) — Bimbingan teknis terakreditasi: 6 jalur profesi (Advokat, Notaris & PPAT, Panitera, PPAT, Kurator, Legal Officer korporasi), 36 modul, kredit poin CPD. Paket: Satu Jalur Rp 450rb / Semua Jalur Rp 1,29jt / Korporat Rp 4,5jt.
+29. **BimTek Profesi Hukum** (/bimtek) — Materi jalur profesi; jangan menyatakan akreditasi atau kredit profesi tanpa bukti resmi
 
 ### 👥 JARINGAN PROFESIONAL
-30. **Direktori Pengacara** (/pengacara) — 300+ advokat terverifikasi, bisa booking konsultasi online. Gratis.
+30. **Direktori Pengacara** (/pengacara) — Profil katalog untuk eksplorasi; identitas dan izin praktik harus diverifikasi mandiri
 31. **Forum Hukum** (/forum) — Diskusi kasus, tanya jawab, posting anonim. Gratis.
 32. **Komunitas** (/komunitas) — Events, networking, jaringan praktisi & akademisi. Gratis.
 
 ### 💰 HARGA & PAKET
 Lihat halaman /harga untuk detail lengkap.
-- **Gratis**: Semua database (peraturan, putusan, panduan, glosarium, perpustakaan), kalkulator, klinik hukum, forum, komunitas, kursus dasar, pengacara
-- **Starter** (Rp 79.000/bulan): Fitur AI dasar + Vault Template + Studio Opini terbatas
-- **Pro** (Rp 199.000/bulan): Semua fitur AI tanpa batas + Legal Ops + Studio Opini tak terbatas
-- **Advokat** (Rp 499.000/bulan): Pro + Advokat OS + BimTek premium + fitur firma hukum + branding
+- Fitur eksplorasi gratis tersedia setelah masuk
+- Paket berbayar saat ini diproses manual melalui kontak WhatsApp
+- Selalu konfirmasi ketersediaan fitur, batas penggunaan, harga, dan ketentuan sebelum transaksi
 
 ### Cara Masuk/Daftar: Klik "Masuk" di pojok kanan atas — bisa daftar gratis atau masuk dengan akun yang sudah ada
-### Fitur 100% gratis tanpa login: Database hukum, kalkulator, klinik hukum, perpustakaan, forum, panduan, glosarium, pengacara
-### Fitur butuh login: Chatbot AI, Agentic AI Chat, Generator Dokumen, Manajemen Perkara, Advokat OS, Studio Opini AI, Legal Ops, Vault Template (akses penuh)
+### Akses fitur dapat berubah selama pengembangan. Arahkan pengguna ke halaman terkait dan jangan menjanjikan entitlement yang tidak terlihat pada sesi mereka.
 `;
 
-const ORCHESTRATOR_SYSTEM = `Anda adalah LexBot, asisten AI utama platform LexCom — platform LegalTech terdepan di Indonesia.
+const ORCHESTRATOR_SYSTEM = `Anda adalah LexBot, asisten AI utama LexCom — Legal AI Operating System untuk Indonesia.
 
 ## Peran Anda:
 1. **Pemandu Platform**: Bantu pengguna memahami dan menggunakan semua fitur LexCom

@@ -626,7 +626,7 @@ export default function KlinikPerlindungan() {
                 <div className="flex items-start gap-2">
                   <Lock className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-amber-300/80 leading-relaxed">
-                    <strong className="text-amber-300">Kerahasiaan terjamin.</strong> Semua informasi yang Anda bagikan kepada Chaesa Lexbot dienkripsi dan tidak disimpan untuk tujuan lain. Identitas Anda tidak akan dibagikan kepada pihak manapun.
+                    <strong className="text-amber-300">Lindungi data sensitif.</strong> Samarkan identitas dan jangan masukkan informasi yang dapat membahayakan korban. Untuk keadaan darurat atau ancaman langsung, hubungi layanan resmi dan pendamping manusia.
                   </p>
                 </div>
               </div>

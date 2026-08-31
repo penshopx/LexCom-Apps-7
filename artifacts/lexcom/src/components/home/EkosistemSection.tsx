@@ -51,8 +51,8 @@ const EKOSISTEM = [
     border: "border-violet-500/20",
     titleColor: "text-violet-400",
     items: [
-      { icon: Search,      label: "Riset AI Hub",          desc: "Ringkasan multi-agen & pencarian semantik", href: "/riset-ai" },
-      { icon: Globe,       label: "Peta Preseden Beta",    desc: "Analisis AI + contoh visual relasi",        href: "/peta-preseden" },
+      { icon: Search,      label: "Riset AI Hub",          desc: "Ringkasan multi-agen berbasis prompt",      href: "/riset-ai" },
+      { icon: Globe,       label: "Peta Preseden Katalog", desc: "Jaringan kandidat perkara MA/MK",           href: "/peta-preseden" },
       { icon: BarChart3,   label: "Snapshot Regulasi",     desc: "Dataset isu dan checklist kurasi",          href: "/intelijen-regulasi" },
     ],
   },

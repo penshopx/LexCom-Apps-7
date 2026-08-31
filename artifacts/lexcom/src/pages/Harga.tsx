@@ -26,7 +26,7 @@ const PLANS = [
     features: [
       { text: "Chaesa Lexbot (dasar)", ok: true },
       { text: "Database Peraturan & Putusan", ok: true },
-      { text: "Glosarium 120+ istilah hukum", ok: true },
+      { text: "Glosarium istilah hukum", ok: true },
       { text: "6 Kalkulator Hukum", ok: true },
       { text: "Forum Komunitas (baca)", ok: true },
       { text: "5 kueri AI per hari", ok: true },
@@ -110,33 +110,25 @@ const PLANS = [
     badge: "Enterprise",
     badgeColor: "bg-amber-500 text-black",
     desc: "Untuk firma hukum, instansi, kampus, dan bisnis skala besar",
-    queries: "Tanpa batas",
+    queries: "Sesuai kesepakatan",
     cta: "Hubungi Kami",
     ctaStyle: "bg-amber-500 text-black hover:bg-amber-400 font-bold",
     features: [
       { text: "Semua fitur Pro", ok: true },
-      { text: "Kueri AI tanpa batas", ok: true },
-      { text: "Embed Chatbot di website Anda", ok: true },
-      { text: "Akses API LexCom", ok: true },
-      { text: "Kustomisasi branding (white-label)", ok: true },
-      { text: "Multi-pengguna (hingga 20 akun)", ok: true },
-      { text: "Laporan penggunaan bulanan", ok: true },
-      { text: "Dukungan prioritas 24/7", ok: true },
-      { text: "Onboarding & pelatihan tim", ok: true },
-      { text: "SLA 99.9% uptime", ok: true },
-      { text: "Integrasi custom (Webhook, Zapier)", ok: true },
-      { text: "Konsultasi strategi AI hukum", ok: true },
+      { text: "Cakupan kueri dikonfirmasi sebelum aktivasi", ok: true },
+      { text: "Konfigurasi organisasi melalui tim LexCom", ok: true },
+      { text: "Fitur tim, API, dan white-label masih dalam pengembangan", ok: false },
     ],
   },
 ];
 
 const FAQS = [
-  { q: "Apakah saya bisa mencoba sebelum berlangganan?", a: "Ya! Paket Gratis tersedia selamanya tanpa kartu kredit. Anda bisa menggunakan Chaesa Lexbot, database hukum, kalkulator, dan glosarium secara gratis." },
-  { q: "Bagaimana cara pembayaran?", a: "Pembayaran dapat dilakukan via transfer bank (BCA, BNI, BRI, Mandiri), GoPay, OVO, Dana, QRIS, atau kartu kredit/debit. Setelah konfirmasi pembayaran, akses langsung aktif." },
-  { q: "Apakah bisa upgrade atau downgrade plan?", a: "Bisa. Upgrade plan akan langsung aktif (sisa saldo diperhitungkan). Downgrade akan berlaku di siklus penagihan berikutnya." },
+  { q: "Apakah saya bisa mencoba sebelum berlangganan?", a: "Ya. Fitur eksplorasi gratis tersedia setelah masuk. Batas dan fitur paket dapat berubah selama fase pengembangan." },
+  { q: "Bagaimana cara pembayaran?", a: "Paket berbayar saat ini dimulai melalui percakapan WhatsApp. Metode pembayaran, aktivasi, dan cakupan akses dikonfirmasi oleh tim sebelum transaksi." },
+  { q: "Apakah bisa upgrade atau downgrade plan?", a: "Perubahan paket saat ini dibantu secara manual oleh tim LexCom melalui kanal kontak yang tersedia." },
   { q: 'Apa itu "kueri AI"?', a: "Setiap percakapan atau permintaan ke sistem AI (Chaesa Lexbot, Pakar AI, Penulis Cerdas, dll.) menghitung sebagai 1 kueri. Batas direset setiap tengah malam WIB." },
-  { q: "Apakah data saya aman?", a: "Ya. Semua data dienkripsi end-to-end dan disimpan di server Indonesia. Kami tidak menjual atau membagikan data pengguna kepada pihak ketiga." },
-  { q: "Bagaimana cara berlangganan plan Advokat/Enterprise?", a: "Klik 'Hubungi Kami' dan tim kami akan menghubungi Anda dalam 1x24 jam untuk demo dan konfigurasi sesuai kebutuhan organisasi Anda." },
+  { q: "Bagaimana saya menjaga data sensitif?", a: "Gunakan LexCom untuk analisis awal dan hindari memasukkan rahasia, identitas sensitif, atau dokumen yang belum boleh diproses layanan AI. Periksa kebijakan privasi sebelum menggunakan data klien." },
+  { q: "Bagaimana cara berlangganan plan Advokat/Enterprise?", a: "Klik 'Hubungi Kami' untuk membahas kebutuhan, ketersediaan fitur, konfigurasi, dan ketentuan paket sebelum aktivasi." },
 ];
 
 const WA_NUMBER = "6281234567890";
@@ -182,11 +174,11 @@ export default function Harga() {
             </motion.div>
             <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
               className="font-display text-4xl md:text-5xl font-bold mb-4">
-              Investasi Terbaik untuk <span className="text-gradient">Kebutuhan Hukum Anda</span>
+              Pilih Akses Sesuai <span className="text-gradient">Alur Kerja Anda</span>
             </motion.h1>
             <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
               className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
-              Mulai gratis, upgrade kapan saja. Tidak ada biaya tersembunyi. Batalkan kapan saja.
+              Fitur eksplorasi tersedia gratis. Paket berbayar diproses manual dan dikonfirmasi sebelum aktivasi.
             </motion.p>
 
             {/* Annual toggle */}
@@ -264,10 +256,10 @@ export default function Harga() {
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
             className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
             {[
-              { icon: Shield, label: "Data Aman", desc: "Enkripsi end-to-end, server Indonesia" },
-              { icon: Star, label: "Garansi 7 Hari", desc: "Uang kembali jika tidak puas" },
-              { icon: Users, label: "10.000+ Pengguna", desc: "Mahasiswa, praktisi, publik" },
-              { icon: Sparkles, label: "Update Gratis", desc: "Fitur baru tanpa biaya tambahan" },
+              { icon: Shield, label: "Status Sumber Jujur", desc: "Katalog dan verifikasi resmi dibedakan" },
+              { icon: Star, label: "Mulai Bertahap", desc: "Jelajahi fitur gratis sebelum memilih paket" },
+              { icon: Users, label: "Untuk Beragam Peran", desc: "Mahasiswa, praktisi, dan publik" },
+              { icon: Sparkles, label: "Alur Kerja Terpadu", desc: "Riset, telaah, drafting, dan perkara" },
             ].map((item, i) => (
               <div key={i} className="glass-card rounded-2xl p-4 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">

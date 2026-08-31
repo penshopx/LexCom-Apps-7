@@ -185,7 +185,7 @@ export default function RisetAI() {
               Riset Hukum <span className="text-gradient">Ditenagai AI</span>
             </h1>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Lebih dari sekadar ringkasan — 4 agen spesialis menganalisis teks hukum Anda secara paralel dari perspektif yang berbeda, menghasilkan wawasan yang jauh lebih kaya.
+              Empat agen spesialis menganalisis teks secara paralel dari perspektif berbeda. Hasil AI tetap perlu diperiksa terhadap dokumen asli dan sumber resmi.
             </p>
           </div>
 
@@ -193,7 +193,7 @@ export default function RisetAI() {
           <div className="flex gap-2 mb-8 p-1 rounded-xl bg-white/5 border border-white/10 w-fit mx-auto">
             {[
               { key: "summarizer", icon: FileText, label: "Ringkasan Multi-Agen" },
-              { key: "search", icon: Search, label: "Pencarian Semantik AI" },
+              { key: "search", icon: Search, label: "Pencarian Hukum AI" },
             ].map(tab => (
               <button
                 key={tab.key}
@@ -412,8 +412,8 @@ export default function RisetAI() {
                 {!searchResult && !isProcessing && (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
                     {[
-                      { icon: Scale, title: "Peraturan Relevan", desc: "Temukan UU, PP, dan Perpres yang berlaku untuk masalah Anda" },
-                      { icon: BookOpen, title: "Putusan Preseden", desc: "Analisis putusan MA, MK, dan PN yang relevan dengan konteks" },
+                      { icon: Scale, title: "Kandidat Peraturan", desc: "Kenali rujukan yang perlu diperiksa pada sumber resmi" },
+                      { icon: BookOpen, title: "Kandidat Putusan", desc: "Gunakan nomor putusan AI hanya sebagai petunjuk yang harus diverifikasi" },
                       { icon: Lightbulb, title: "Analisis Mendalam", desc: "Dapatkan analisis lintas-perspektif dari berbagai bidang hukum" },
                     ].map((item, i) => (
                       <div key={i} className="glass-card rounded-xl p-4 border border-white/10 text-center">

@@ -15,7 +15,10 @@ Jawab inti masalah secara ringkas dan bersyarat pada fakta yang tersedia.
 Hubungkan fakta pengguna dengan unsur atau ketentuan yang relevan. Bedakan fakta, asumsi, dan interpretasi.
 
 ### Asumsi dan Batasan
-Sebutkan fakta yang belum diketahui, yurisdiksi/waktu yang dapat mengubah hasil, dan batas keyakinan jawaban.
+Sebutkan fakta yang belum diketahui serta yurisdiksi atau waktu yang dapat mengubah hasil.
+
+### Tingkat Keyakinan
+Pilih Tinggi, Sedang, atau Rendah dan jelaskan alasannya berdasarkan kelengkapan fakta serta kepastian sumber. Jangan menyamakan keyakinan model dengan validasi hukum.
 
 ### Langkah Berikutnya
 Berikan tindakan praktis dan dokumen yang perlu disiapkan. Prioritaskan langkah yang aman dan dapat dibatalkan.
