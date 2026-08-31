@@ -7,4 +7,4 @@ Use a navigation runtime route with Workbox's precache fallback plugin for a ded
 
 **Why:** Workbox 7 rejects `offlineFallback` as a top-level `generateSW` option. Also, vite-plugin-pwa inserts an `index.html` navigation fallback by default; that route is registered first and shadows a later offline runtime route unless disabled.
 
-**How to apply:** When changing LexCom PWA navigation caching, inspect the generated service worker after a production build. Confirm the offline document is precached, the precache fallback plugin points to it, and no earlier SPA `NavigationRoute` remains.
+**How to apply:** When changing LexCom PWA navigation caching, inspect the generated service worker after a production build. Confirm the offline document is precached, the precache fallback plugin points to it, and no earlier SPA `NavigationRoute` remains. Test offline navigation against a production preview after the service worker controls the page; Vite development mode can show Chrome's generic offline page even when the production fallback is correct.
