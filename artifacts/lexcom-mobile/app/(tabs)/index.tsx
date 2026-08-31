@@ -21,6 +21,7 @@ import { useAuth } from '@/context/AuthContext';
 import ChatMessage, { type Message, type AgentInfo } from '@/components/ChatMessage';
 import TypingIndicator from '@/components/TypingIndicator';
 import { consumePendingAgent, AGENTS } from '@/lib/agentStore';
+import ConversationDrawer, { type ConversationItem } from '@/components/ConversationDrawer';
 
 const CONV_ID_KEY = 'lexcom_conv_id';
 
@@ -46,10 +47,18 @@ interface SseEvent {
   message?: string;
 }
 
+interface DbMessage {
+  id: number;
+  conversationId: number;
+  role: string;
+  content: string;
+  createdAt: string;
+}
+
 export default function LexBotScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { token } = useAuth();
+  const { token, isLoading: authLoading } = useAuth();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
@@ -60,14 +69,65 @@ export default function LexBotScreen() {
   const [pendingAgent, setPendingAgentState] = useState<string | null>(null);
   const inputRef = useRef<TextInput>(null);
 
+  // Conversation history drawer
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [conversations, setConversations] = useState<ConversationItem[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isLoadingConversation, setIsLoadingConversation] = useState(false);
+
+  // Stored conversation ID read from AsyncStorage (populated on mount)
+  const [storedConvId, setStoredConvId] = useState<number | null>(null);
+  const hasRestoredRef = useRef(false);
+
   const isStreaming = status !== 'idle';
 
-  // Load saved conversation ID
+  // Capture token in a ref so async callbacks always see the latest value
+  const tokenRef = useRef(token);
+  useEffect(() => { tokenRef.current = token; }, [token]);
+
+  function getAuthHeaders(): Record<string, string> {
+    const t = tokenRef.current;
+    return t ? { Authorization: `Bearer ${t}` } : {};
+  }
+
+  // Step 1: Read stored conversation ID from AsyncStorage on mount
   useEffect(() => {
     AsyncStorage.getItem(CONV_ID_KEY).then((val) => {
-      if (val) setConversationId(parseInt(val));
+      if (val) setStoredConvId(parseInt(val));
     });
   }, []);
+
+  // Step 2: Once auth settles, a session exists, and we have a stored ID,
+  // hydrate messages. Keep the stored pointer while logged out so a later
+  // login in the same app start can still restore the conversation.
+  useEffect(() => {
+    if (!authLoading && token && storedConvId !== null && !hasRestoredRef.current) {
+      hasRestoredRef.current = true;
+      restoreConversationFromId(storedConvId);
+    }
+  }, [authLoading, token, storedConvId]);
+
+  // Fetch conversation list from server (only when authenticated)
+  const fetchConversationList = useCallback(async () => {
+    if (!token) {
+      setConversations([]);
+      return;
+    }
+    setIsLoadingHistory(true);
+    try {
+      const res = await fetch(`${getApiBase()}/agentic/conversations`, {
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        const data = await res.json() as ConversationItem[];
+        setConversations(data);
+      }
+    } catch {
+      // ignore — history is best-effort
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }, [token]);
 
   // Pick up pending agent set from Peraturan tab
   useFocusEffect(
@@ -91,16 +151,73 @@ export default function LexBotScreen() {
     }, []),
   );
 
-  function getAuthHeaders(): Record<string, string> {
-    return token ? { Authorization: `Bearer ${token}` } : {};
+  async function openDrawer() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setDrawerVisible(true);
+    fetchConversationList();
   }
 
   async function startNewChat() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setMessages([]);
     setConversationId(null);
+    setStoredConvId(null);
     setPendingAgentState(null);
+    hasRestoredRef.current = true; // prevent auto-restore from firing again
     await AsyncStorage.removeItem(CONV_ID_KEY);
+  }
+
+  /**
+   * Fetches messages for a conversation ID and hydrates the chat view.
+   * Called automatically on mount (to restore last session) and from the drawer.
+   * Clears the stored ID on 403/404 to avoid a stuck invalid state.
+   */
+  async function fetchAndDisplayMessages(id: number): Promise<boolean> {
+    try {
+      const res = await fetch(
+        `${getApiBase()}/agentic/conversations/${id}/messages`,
+        { headers: getAuthHeaders() },
+      );
+      if (res.ok) {
+        const dbMessages = await res.json() as DbMessage[];
+        const loaded: Message[] = dbMessages.map((m) => ({
+          id: generateId(),
+          role: m.role as 'user' | 'assistant',
+          content: m.content,
+        }));
+        setMessages(loaded);
+        return true;
+      } else if (res.status === 403 || res.status === 404) {
+        // Conversation doesn't exist or doesn't belong to this user — clear it
+        setConversationId(null);
+        setStoredConvId(null);
+        await AsyncStorage.removeItem(CONV_ID_KEY);
+      }
+    } catch {
+      // Network error — keep conversation ID but leave messages empty so user can retry
+    }
+    return false;
+  }
+
+  /**
+   * Auto-restore: called on startup once auth settles.
+   */
+  async function restoreConversationFromId(id: number) {
+    setConversationId(id);
+    setIsLoadingConversation(true);
+    await fetchAndDisplayMessages(id);
+    setIsLoadingConversation(false);
+  }
+
+  async function loadConversation(conv: ConversationItem) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setIsLoadingConversation(true);
+    setMessages([]);
+    setConversationId(conv.id);
+    setStoredConvId(conv.id);
+    await AsyncStorage.setItem(CONV_ID_KEY, String(conv.id));
+    await fetchAndDisplayMessages(conv.id);
+    setIsLoadingConversation(false);
   }
 
   async function handleSend(text: string) {
@@ -126,11 +243,16 @@ export default function LexBotScreen() {
           headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
           body: JSON.stringify({ title: trimmed.slice(0, 60) }),
         });
-        if (!res.ok) throw new Error('Failed to create conversation');
+        if (!res.ok) {
+          if (res.status === 401) throw new Error('AUTH_REQUIRED');
+          throw new Error('Failed to create conversation');
+        }
         const conv = await res.json() as { id: number };
         convId = conv.id;
         setConversationId(convId);
         await AsyncStorage.setItem(CONV_ID_KEY, String(convId));
+        // Refresh history list so new conversation appears immediately
+        fetchConversationList();
       }
 
       const response = await expoFetch(`${getApiBase()}/agentic/conversations/${convId}/chat`, {
@@ -143,7 +265,10 @@ export default function LexBotScreen() {
         body: JSON.stringify({ content: trimmed, ...(forcedAgents ? { forcedAgents } : {}) }),
       });
 
-      if (!response.ok) throw new Error('Chat request failed');
+      if (!response.ok) {
+        if (response.status === 401) throw new Error('AUTH_REQUIRED');
+        throw new Error('Chat request failed');
+      }
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No response body');
@@ -237,11 +362,15 @@ export default function LexBotScreen() {
           } catch { /* skip parse errors */ }
         }
       }
-    } catch {
+    } catch (error) {
       setShowTyping(false);
+      const errorMessage =
+        error instanceof Error && error.message === 'AUTH_REQUIRED'
+          ? 'Silakan masuk terlebih dahulu untuk menyimpan percakapan.'
+          : 'Maaf, tidak dapat terhubung ke server. Coba lagi.';
       setMessages((prev) => [
         ...prev,
-        { id: generateId(), role: 'assistant', content: 'Maaf, tidak dapat terhubung ke server. Coba lagi.' },
+        { id: generateId(), role: 'assistant', content: errorMessage },
       ]);
     } finally {
       setStatus('idle');
@@ -278,6 +407,15 @@ export default function LexBotScreen() {
         ]}
       >
         <View style={styles.headerLeft}>
+          {token ? (
+            <Pressable
+              onPress={openDrawer}
+              style={({ pressed }) => [styles.headerIconBtn, { opacity: pressed ? 0.6 : 1 }]}
+              testID="history-btn"
+            >
+              <Ionicons name="menu-outline" size={24} color={colors.primary} />
+            </Pressable>
+          ) : null}
           <View style={[styles.logoMark, { backgroundColor: colors.primary }]}>
             <Ionicons name="scale-outline" size={14} color={colors.primaryForeground} />
           </View>
@@ -297,40 +435,49 @@ export default function LexBotScreen() {
         behavior="padding"
         keyboardVerticalOffset={0}
       >
-        <FlatList
-          data={reversedMessages}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ChatMessage message={item} />}
-          inverted={messages.length > 0}
-          ListHeaderComponent={showTyping ? <TypingIndicator /> : null}
-          contentContainerStyle={styles.listContent}
-          keyboardDismissMode="interactive"
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Ionicons name="scale" size={48} color={colors.muted} />
-              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>LexBot</Text>
-              <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>
-                Tanyakan apa saja seputar hukum Indonesia
-              </Text>
-              <View style={styles.suggestions}>
-                {['Apa syarat mendirikan PT?', 'Berapa pesangon PHK 5 tahun?', 'Bagaimana proses perceraian?'].map((s) => (
-                  <Pressable
-                    key={s}
-                    onPress={() => handleSend(s)}
-                    style={({ pressed }) => [
-                      styles.suggestion,
-                      { borderColor: colors.border, backgroundColor: pressed ? colors.muted : 'transparent' },
-                    ]}
-                  >
-                    <Text style={[styles.suggestionText, { color: colors.mutedForeground }]}>{s}</Text>
-                  </Pressable>
-                ))}
+        {isLoadingConversation ? (
+          <View style={styles.loadingConvContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.loadingConvText, { color: colors.mutedForeground }]}>
+              Memuat percakapan...
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={reversedMessages}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => <ChatMessage message={item} />}
+            inverted={messages.length > 0}
+            ListHeaderComponent={showTyping ? <TypingIndicator /> : null}
+            contentContainerStyle={styles.listContent}
+            keyboardDismissMode="interactive"
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <Ionicons name="scale" size={48} color={colors.muted} />
+                <Text style={[styles.emptyTitle, { color: colors.foreground }]}>LexBot</Text>
+                <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>
+                  Tanyakan apa saja seputar hukum Indonesia
+                </Text>
+                <View style={styles.suggestions}>
+                  {['Apa syarat mendirikan PT?', 'Berapa pesangon PHK 5 tahun?', 'Bagaimana proses perceraian?'].map((s) => (
+                    <Pressable
+                      key={s}
+                      onPress={() => handleSend(s)}
+                      style={({ pressed }) => [
+                        styles.suggestion,
+                        { borderColor: colors.border, backgroundColor: pressed ? colors.muted : 'transparent' },
+                      ]}
+                    >
+                      <Text style={[styles.suggestionText, { color: colors.mutedForeground }]}>{s}</Text>
+                    </Pressable>
+                  ))}
+                </View>
               </View>
-            </View>
-          }
-        />
+            }
+          />
+        )}
 
         {/* Status bar */}
         {statusLabel && (
@@ -394,6 +541,17 @@ export default function LexBotScreen() {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Conversation history drawer */}
+      <ConversationDrawer
+        visible={drawerVisible}
+        conversations={conversations}
+        activeConversationId={conversationId}
+        isLoading={isLoadingHistory}
+        onClose={() => setDrawerVisible(false)}
+        onSelectConversation={loadConversation}
+        onNewChat={startNewChat}
+      />
     </View>
   );
 }
@@ -410,6 +568,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerIconBtn: { padding: 4 },
   logoMark: {
     width: 28,
     height: 28,
@@ -420,6 +579,15 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 20, fontWeight: '700' as const },
   newChatBtn: { padding: 4 },
   listContent: { paddingVertical: 12 },
+  loadingConvContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  loadingConvText: {
+    fontSize: 14,
+  },
   emptyState: {
     flex: 1,
     alignItems: 'center',

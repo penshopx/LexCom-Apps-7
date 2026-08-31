@@ -2,8 +2,8 @@ import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { batchProcess, isRateLimitError, limitAiRequest } from "@workspace/integrations-openai-ai-server/batch";
 import { db, conversations, messages } from "@workspace/db";
-import { eq, asc } from "drizzle-orm";
 import { LEGAL_ANSWER_STANDARD } from "../lib/legal-answer-standard";
+import { and, eq, asc, desc } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -166,14 +166,39 @@ Panduan:
 - Sertakan disclaimer untuk konsultasi pengacara berlisensi
 - Gunakan Bahasa Indonesia profesional`;
 
+router.get("/agentic/conversations", async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
+    const convs = await db
+      .select()
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.userId, userId),
+          eq(conversations.agentType, "agentic"),
+        ),
+      )
+      .orderBy(desc(conversations.createdAt));
+    res.json(convs);
+  } catch (err) {
+    req.log.error({ err }, "Failed to list agentic conversations");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.post("/agentic/conversations", async (req, res) => {
   try {
-    const userId = req.user?.id ?? null;
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
     const { title = "Agentic Chat" } = req.body as { title?: string };
-    const [conv] = await db
-      .insert(conversations)
-      .values({ title, agentType: "agentic", userId })
-      .returning();
+    const [conv] = await db.select().from(conversations).where(eq(conversations.id, convId));
     res.status(201).json(conv);
   } catch (err) {
     req.log.error({ err }, "Failed to create agentic conversation");
@@ -181,8 +206,15 @@ router.post("/agentic/conversations", async (req, res) => {
   }
 });
 
-router.post("/agentic/conversations/:id/chat", async (req, res) => {
-  try {
+/**
+ * Returns true if the caller is allowed to access the conversation.
+ * Rules:
+ * - Every persisted conversation requires an authenticated owner.
+ * - Unowned legacy conversations are not accessible through this API.
+ */
+function canAccessConversation(conv: { userId: string | null }, requestUserId: string | null): boolean {
+  return conv.userId !== null && requestUserId !== null && conv.userId === requestUserId;
+}
     const convId = parseInt(req.params.id);
     const { content, forcedAgents } = req.body as {
       content: string;
@@ -195,13 +227,7 @@ router.post("/agentic/conversations/:id/chat", async (req, res) => {
     }
 
     const [conv] = await db.select().from(conversations).where(eq(conversations.id, convId));
-    if (!conv) {
-      res.status(404).json({ error: "Conversation not found" });
-      return;
-    }
-
-    await db.insert(messages).values({ conversationId: convId, role: "user", content });
-
+    const requestUserId = req.user?.id ?? null;
     const history = await db
       .select()
       .from(messages)
@@ -257,7 +283,7 @@ router.post("/agentic/conversations/:id/chat", async (req, res) => {
       );
 
       const toolCall = orchestratorResult.choices[0]?.message?.tool_calls?.[0];
-      if (!toolCall) {
+      if (!toolCall || toolCall.type !== "function") {
         emit({ type: "error", message: "Orchestrator gagal memutuskan" });
         res.end();
         return;
@@ -406,15 +432,9 @@ router.post("/agentic/conversations/:id/chat", async (req, res) => {
       const message = isRateLimitError(err)
         ? "Batas permintaan AI tercapai. Silakan coba lagi dalam beberapa detik."
         : "Terjadi kesalahan, silakan coba lagi";
-      res.write(`data: ${JSON.stringify({ type: "error", message })}\n\n`);
-      res.end();
-    } catch {}
-  }
-});
-
-router.get("/agentic/conversations/:id/messages", async (req, res) => {
-  try {
     const convId = parseInt(req.params.id);
+    const [conv] = await db.select().from(conversations).where(eq(conversations.id, convId));
+    const requestUserId = req.user?.id ?? null;
     const msgs = await db
       .select()
       .from(messages)

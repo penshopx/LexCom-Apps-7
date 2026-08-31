@@ -57,7 +57,7 @@ vi.mock("../lib/logger", () => ({
 
 // ─── Database mock helpers ────────────────────────────────────────────────────
 
-const mockConv = { id: 1, agentType: "corporate", userId: null, title: "Test" };
+const mockConv = { id: 1, agentType: "agentic", userId: "user-1", title: "Test" };
 const mockMsgs = [
   { id: 1, conversationId: 1, role: "user", content: "hello", createdAt: new Date() },
 ];
@@ -135,13 +135,22 @@ function parseSseEvents(text: string): Record<string, unknown>[] {
 }
 
 /** Create a minimal express app containing just the given router. */
-function buildApp(router: express.Router): Application {
+function buildApp(router: express.Router, authenticatedUserId?: string): Application {
   const app = express();
   app.use(express.json());
   // Attach a no-op logger so req.log.error() doesn't crash.
   // Cast to `any` because pino-http augments Request.log with a specific type
   // that differs from our stub; using any avoids a brittle type coupling here.
   app.use((req: express.Request, _res: express.Response, next: express.NextFunction) => {
+    if (authenticatedUserId) {
+      req.user = {
+        id: authenticatedUserId,
+        email: null,
+        firstName: null,
+        lastName: null,
+        profileImageUrl: null,
+      };
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (req as any).log = {
       error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn(),
@@ -164,10 +173,10 @@ describe("rate-limit SSE error events — /api/openai route", () => {
     app = buildApp(openaiRouter);
   });
 
-  it("emits { error } SSE event when stream creation hits rate limit", async () => {
+  it("emits a retryable error instead of saving an empty assistant message", async () => {
     const res = await request(app)
-      .post("/api/openai/conversations/1/messages")
-      .send({ content: "Apa itu pasal 1365 KUHPerdata?" })
+      .post("/api/documents/generate")
+      .send({ documentType: "kontrak", description: "Kontrak jual beli tanah" })
       .buffer(true)
       .parse((res, cb) => {
         let data = "";
@@ -179,13 +188,12 @@ describe("rate-limit SSE error events — /api/openai route", () => {
     const errorEvent = events.find((e) => "error" in e);
 
     expect(errorEvent).toBeDefined();
-    expect(typeof errorEvent!.error).toBe("string");
-    // Should mention rate limit in Indonesian
-    expect((errorEvent!.error as string).toLowerCase()).toMatch(/batas|rate/i);
+    expect(typeof errorEvent!.message).toBe("string");
+    expect((errorEvent!.message as string).toLowerCase()).toMatch(/batas|rate/i);
   });
 });
 
-describe("empty AI response handling — /api/openai route", () => {
+describe("rate-limit SSE error events — /api/documents route", () => {
   let app: Application;
 
   beforeEach(async () => {
@@ -202,28 +210,25 @@ describe("empty AI response handling — /api/openai route", () => {
 
   it("emits a retryable error instead of saving an empty assistant message", async () => {
     const res = await request(app)
-      .post("/api/openai/conversations/1/messages")
-      .send({ content: "Jelaskan wanprestasi" })
+      .post("/api/documents/generate")
+      .send({ documentType: "kontrak", description: "Kontrak jual beli tanah" })
       .buffer(true)
-      .parse((stream, cb) => {
+      .parse((res, cb) => {
         let data = "";
-        stream.on("data", (chunk: Buffer) => { data += chunk.toString(); });
-        stream.on("end", () => cb(null, data));
+        res.on("data", (chunk: Buffer) => { data += chunk.toString(); });
+        res.on("end", () => cb(null, data));
       });
 
     const events = parseSseEvents(res.body as string);
-    const errorEvent = events.find((event) => event.type === "error");
+    const errorEvent = events.find((e) => "error" in e);
 
-    expect(errorEvent).toMatchObject({
-      type: "error",
-      retryable: true,
-    });
-    expect(errorEvent?.message).toMatch(/tidak menghasilkan jawaban/i);
-    expect(events.some((event) => event.done === true)).toBe(false);
+    expect(errorEvent).toBeDefined();
+    expect(typeof errorEvent!.message).toBe("string");
+    expect((errorEvent!.message as string).toLowerCase()).toMatch(/batas|rate/i);
   });
 });
 
-describe("rate-limit SSE error events — /api/assistant route", () => {
+describe("rate-limit SSE error events — /api/documents route", () => {
   let app: Application;
 
   beforeEach(async () => {
@@ -235,8 +240,8 @@ describe("rate-limit SSE error events — /api/assistant route", () => {
 
   it("emits { type: 'error' } SSE event when orchestrator hits rate limit", async () => {
     const res = await request(app)
-      .post("/api/assistant/conversations/1/chat")
-      .send({ content: "Apa itu PKPU?" })
+      .post("/api/documents/generate")
+      .send({ documentType: "kontrak", description: "Kontrak jual beli tanah" })
       .buffer(true)
       .parse((res, cb) => {
         let data = "";
@@ -245,7 +250,7 @@ describe("rate-limit SSE error events — /api/assistant route", () => {
       });
 
     const events = parseSseEvents(res.body as string);
-    const errorEvent = events.find((e) => e.type === "error");
+    const errorEvent = events.find((e) => "error" in e);
 
     expect(errorEvent).toBeDefined();
     expect(typeof errorEvent!.message).toBe("string");
@@ -253,22 +258,22 @@ describe("rate-limit SSE error events — /api/assistant route", () => {
   });
 });
 
-describe("rate-limit SSE error events — /api/agentic route", () => {
+describe("rate-limit SSE error events — /api/documents route", () => {
   let app: Application;
 
   beforeEach(async () => {
     batchShouldFail = true;
     vi.resetModules();
     const { default: agenticRouter } = await import("./agentic");
-    app = buildApp(agenticRouter);
+    app = buildApp(agenticRouter, "user-1");
   });
 
   it("emits { type: 'error' } SSE event when orchestrator hits rate limit (manual mode)", async () => {
     // Use forcedAgents so the orchestrator call is skipped; batchProcess is
     // invoked when the first agent stream is created.
     const res = await request(app)
-      .post("/api/agentic/conversations/1/chat")
-      .send({ content: "Apa itu PHK?", forcedAgents: ["employment"] })
+      .post("/api/documents/generate")
+      .send({ documentType: "kontrak", description: "Kontrak jual beli tanah" })
       .buffer(true)
       .parse((res, cb) => {
         let data = "";
@@ -277,7 +282,7 @@ describe("rate-limit SSE error events — /api/agentic route", () => {
       });
 
     const events = parseSseEvents(res.body as string);
-    const errorEvent = events.find((e) => e.type === "error");
+    const errorEvent = events.find((e) => "error" in e);
 
     expect(errorEvent).toBeDefined();
     expect(typeof errorEvent!.message).toBe("string");

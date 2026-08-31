@@ -13,6 +13,8 @@ tags:
     description: Browser and mobile authentication endpoints.
   - name: openai
     description: OpenAI AI chat, image, and audio operations
+  - name: agentic
+    description: Agentic multi-agent AI conversations
   - name: cases
     description: Legal case management
   - name: documents
@@ -147,6 +149,111 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LogoutSuccess'
+  /agentic/conversations:
+    get:
+      operationId: listAgenticConversations
+      tags: [agentic]
+      summary: List conversations for the authenticated user
+      description: Returns all agentic conversations linked to the authenticated user, ordered newest first. Authentication is required.
+      parameters:
+        - $ref: '#/components/parameters/RequiredAuthorizationSessionHeader'
+      responses:
+        "200":
+          description: List of agentic conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AgenticConversation"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    post:
+      operationId: createAgenticConversation
+      tags: [agentic]
+      summary: Create a new agentic conversation
+      parameters:
+        - $ref: '#/components/parameters/RequiredAuthorizationSessionHeader'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAgenticConversationBody"
+      responses:
+        "201":
+          description: Created conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgenticConversation"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /agentic/conversations/{id}/messages:
+    get:
+      operationId: listAgenticMessages
+      tags: [agentic]
+      summary: Get all messages in an agentic conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/RequiredAuthorizationSessionHeader'
+      responses:
+        "200":
+          description: Ordered list of messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AgenticMessage"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Conversation belongs to another user or has no owner
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Conversation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /openai/conversations:
     get:
       operationId: listOpenaiConversations
@@ -438,6 +545,13 @@ components:
       description: Opaque session token — `Bearer <sid>`.
       schema:
         type: string
+    RequiredAuthorizationSessionHeader:
+      name: Authorization
+      in: header
+      required: true
+      description: Opaque server session token returned by the mobile token exchange — `Bearer <sid>`.
+      schema:
+        type: string
     SessionCookie:
       name: sid
       in: cookie
@@ -514,6 +628,50 @@ components:
       required: [error]
       properties:
         error:
+          type: string
+    AgenticConversation:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        agentType:
+          type: string
+        userId:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - createdAt
+    AgenticMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+        conversationId:
+          type: integer
+        role:
+          type: string
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - conversationId
+        - role
+        - content
+        - createdAt
+    CreateAgenticConversationBody:
+      type: object
+      properties:
+        title:
           type: string
     OpenaiConversation:
       type: object
