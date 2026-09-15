@@ -5,3 +5,4 @@
 - [PWA offline fallback](pwa-offline-fallback.md) — Workbox 7 needs a precache fallback plugin; disable Vite PWA's default SPA fallback so it cannot shadow offline navigation
 - [Route splitting strategy](route-splitting-strategy.md) — prefer route-level lazy imports; broad vendor chunks increase LexCom's startup payload despite smaller individual chunks
 - [SVG splash rasterization](svg-splash-rasterization.md) — scale embedded logo art with a nested viewBox; shell-rounded SVG scale factors can silently create oversized white regions
+- [Official regulation provenance](official-regulation-provenance.md) — fail closed: only structured official status fields count; stale, ambiguous, or off-domain results stay unverified

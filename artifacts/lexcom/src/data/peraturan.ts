@@ -1,3 +1,8 @@
+import type {
+  RegulationProvenance,
+  RegulationReference,
+} from "@workspace/api-client-react";
+
 export type JenisPeraturan = "UU" | "PP" | "Perpres" | "Permen" | "Perda";
 
 export interface Peraturan {
@@ -9,9 +14,59 @@ export interface Peraturan {
   instansi: string;
   ringkasan: string;
   isi: string;
+  provenance: RegulationProvenance;
 }
 
-export const dataPeraturan: Peraturan[] = [
+type CatalogPeraturan = Omit<Peraturan, "provenance">;
+
+const OFFICIAL_SOURCE_ORIGIN = "https://peraturan.go.id";
+const OFFICIAL_SLUG_TYPES: Record<string, string> = {
+  UU: "uu",
+  PP: "pp",
+  PERPRES: "perpres",
+  PERMEN: "permen",
+  PERDA: "perda",
+};
+
+export function peraturanReference(
+  peraturan: Pick<Peraturan, "jenis" | "nomor" | "tahun">,
+): RegulationReference {
+  const statedType = peraturan.nomor.match(/^(.+?)\s+No\.?/i)?.[1];
+  const type = (statedType ?? peraturan.jenis).replace(/\s+/g, " ").toUpperCase();
+  const number = peraturan.nomor.match(/\d+/)?.[0] ?? "";
+
+  return { type, number, year: String(peraturan.tahun) };
+}
+
+export function officialPeraturanUrl(
+  reference: RegulationReference,
+): string {
+  const normalizedType = reference.type.trim().toUpperCase();
+  const slugType = OFFICIAL_SLUG_TYPES[normalizedType];
+
+  if (slugType && reference.year) {
+    return `${OFFICIAL_SOURCE_ORIGIN}/id/${slugType}-no-${reference.number}-tahun-${reference.year}`;
+  }
+
+  const label = `${normalizedType} No. ${reference.number}${
+    reference.year ? ` Tahun ${reference.year}` : ""
+  }`;
+  return `${OFFICIAL_SOURCE_ORIGIN}/search?q=${encodeURIComponent(label)}`;
+}
+
+export function initialPeraturanProvenance(
+  reference: RegulationReference,
+): RegulationProvenance {
+  return {
+    ...reference,
+    sourceName: "Portal Peraturan.go.id",
+    sourceUrl: officialPeraturanUrl(reference),
+    checkedAt: null,
+    status: "unavailable",
+  };
+}
+
+const catalogPeraturan: CatalogPeraturan[] = [
   {
     id: "uu-13-2003",
     nomor: "UU No. 13 Tahun 2003",
@@ -543,3 +598,11 @@ export const dataPeraturan: Peraturan[] = [
     isi: "Permen ini mewajibkan produsen di sektor makanan-minuman, jasa layanan makanan, dan ritel untuk menyusun rencana pengurangan sampah dan melaporkan pencapaiannya setiap tahun kepada KLHK. Target pengurangan sampah 30% dari 2020-2029. Produsen wajib menggunakan kemasan ramah lingkungan, mendirikan pusat pengumpulan kembali, atau bermitra dengan bank sampah. Sanksi administratif hingga pencabutan izin usaha.",
   },
 ];
+
+export const dataPeraturan: Peraturan[] = catalogPeraturan.map((peraturan) => {
+  const reference = peraturanReference(peraturan);
+  return {
+    ...peraturan,
+    provenance: initialPeraturanProvenance(reference),
+  };
+});

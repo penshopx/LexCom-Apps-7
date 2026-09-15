@@ -38,6 +38,8 @@ import type {
   OpenaiConversationWithMessages,
   OpenaiError,
   OpenaiMessage,
+  RegulationStatusRequest,
+  RegulationStatusResponse,
   SendOpenaiMessageBody,
   UpdateCaseBody,
 } from "./api.schemas";
@@ -2232,4 +2234,95 @@ export const useGenerateDocument = <
   TContext
 > => {
   return useMutation(getGenerateDocumentMutationOptions(options));
+};
+
+/**
+ * Checks each requested citation against the official peraturan.go.id portal. Status is never inferred from AI output.
+ * @summary Check regulation status against an official source
+ */
+export const getCheckRegulationStatusesUrl = () => {
+  return `/api/legal/regulations/status`;
+};
+
+export const checkRegulationStatuses = async (
+  regulationStatusRequest: RegulationStatusRequest,
+  options?: RequestInit,
+): Promise<RegulationStatusResponse> => {
+  return customFetch<RegulationStatusResponse>(
+    getCheckRegulationStatusesUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(regulationStatusRequest),
+    },
+  );
+};
+
+export const getCheckRegulationStatusesMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof checkRegulationStatuses>>,
+    TError,
+    { data: BodyType<RegulationStatusRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof checkRegulationStatuses>>,
+  TError,
+  { data: BodyType<RegulationStatusRequest> },
+  TContext
+> => {
+  const mutationKey = ["checkRegulationStatuses"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof checkRegulationStatuses>>,
+    { data: BodyType<RegulationStatusRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return checkRegulationStatuses(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CheckRegulationStatusesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof checkRegulationStatuses>>
+>;
+export type CheckRegulationStatusesMutationBody =
+  BodyType<RegulationStatusRequest>;
+export type CheckRegulationStatusesMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Check regulation status against an official source
+ */
+export const useCheckRegulationStatuses = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof checkRegulationStatuses>>,
+    TError,
+    { data: BodyType<RegulationStatusRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof checkRegulationStatuses>>,
+  TError,
+  { data: BodyType<RegulationStatusRequest> },
+  TContext
+> => {
+  return useMutation(getCheckRegulationStatusesMutationOptions(options));
 };

@@ -144,7 +144,7 @@ LexCom menggunakan OpenAI Function Calling (disebut juga "tool use") untuk:
 19. **Klinik PKPU & Kepailitan** (/klinik-pkpu) — Panduan PKPU & Pailit (UU 37/2004): 5 tahap alur, kalkulator voting kuorum Pasal 281 (cek apakah perdamaian sah), generator dokumen kurator. Gratis.
 
 ### 📚 DATABASE HUKUM
-19. **Peraturan** (/peraturan) — Katalog lokal UU, PP, Perpres, dan Permen dengan tautan portal resmi; status berlaku belum divalidasi otomatis
+19. **Peraturan** (/peraturan) — Katalog lokal UU, PP, Perpres, dan Permen dengan pemeriksaan status ke portal resmi; hasil gagal atau kedaluwarsa tetap ditandai perlu verifikasi
 20. **Putusan** (/putusan) — Katalog lokal kandidat putusan MK, MA, PN, dan PA; metadata perlu diperiksa pada direktori resmi
 21. **Panduan Hukum** (/panduan) — Katalog panduan prosedur hukum untuk pembelajaran awal
 22. **Glosarium** (/glosarium) — Katalog istilah hukum Indonesia

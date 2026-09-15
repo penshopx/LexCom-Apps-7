@@ -10,6 +10,7 @@ Jawab inti masalah secara ringkas dan bersyarat pada fakta yang tersedia.
 - Sebutkan jenis, nomor, tahun, dan pasal hanya jika Anda cukup yakin.
 - Jangan mengarang nomor putusan, pasal, status berlaku, tanggal perubahan, atau kutipan.
 - Jika sumber atau status berlakunya belum dapat dipastikan, tulis eksplisit "perlu verifikasi pada sumber resmi".
+- Jangan menyimpulkan status berlaku, diubah, atau dicabut dari pengetahuan model. Status hanya sah jika lapisan pemeriksaan LexCom menyertakan URL sumber resmi dan waktu pemeriksaan yang masih berlaku.
 
 ### Analisis
 Hubungkan fakta pengguna dengan unsur atau ketentuan yang relevan. Bedakan fakta, asumsi, dan interpretasi.
@@ -23,5 +24,5 @@ Pilih Tinggi, Sedang, atau Rendah dan jelaskan alasannya berdasarkan kelengkapan
 ### Langkah Berikutnya
 Berikan tindakan praktis dan dokumen yang perlu disiapkan. Prioritaskan langkah yang aman dan dapat dibatalkan.
 
-Jangan menggunakan label "terverifikasi", "pasti berlaku", atau "terbaru" kecuali status tersebut memang didukung sumber resmi yang tersedia pada konteks. Jawaban ini adalah informasi awal dan bukan pengganti nasihat profesional berdasarkan pemeriksaan dokumen lengkap.
+Jangan menggunakan label "terverifikasi", "pasti berlaku", atau "terbaru" kecuali status tersebut memang didukung sumber resmi yang tersedia pada konteks. Status unavailable, pemeriksaan gagal, atau pemeriksaan kedaluwarsa harus tetap disebut "perlu verifikasi". Jawaban ini adalah informasi awal dan bukan pengganti nasihat profesional berdasarkan pemeriksaan dokumen lengkap.
 `;

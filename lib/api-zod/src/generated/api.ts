@@ -412,3 +412,80 @@ export const GenerateDocumentBody = zod.object({
   parties: zod.string().optional(),
   details: zod.string().optional(),
 });
+
+/**
+ * Checks each requested citation against the official peraturan.go.id portal. Status is never inferred from AI output.
+ * @summary Check regulation status against an official source
+ */
+export const checkRegulationStatusesBodyReferencesItemTypeMax = 24;
+
+export const checkRegulationStatusesBodyReferencesItemNumberMax = 12;
+
+export const checkRegulationStatusesBodyReferencesItemNumberRegExp = new RegExp(
+  "^[0-9]+$",
+);
+export const checkRegulationStatusesBodyReferencesItemYearRegExp = new RegExp(
+  "^[0-9]{4}$",
+);
+export const checkRegulationStatusesBodyReferencesMax = 50;
+
+export const CheckRegulationStatusesBody = zod.object({
+  references: zod
+    .array(
+      zod.object({
+        type: zod
+          .string()
+          .min(1)
+          .max(checkRegulationStatusesBodyReferencesItemTypeMax),
+        number: zod
+          .string()
+          .min(1)
+          .max(checkRegulationStatusesBodyReferencesItemNumberMax)
+          .regex(checkRegulationStatusesBodyReferencesItemNumberRegExp),
+        year: zod
+          .string()
+          .regex(checkRegulationStatusesBodyReferencesItemYearRegExp)
+          .optional(),
+      }),
+    )
+    .min(1)
+    .max(checkRegulationStatusesBodyReferencesMax),
+});
+
+export const checkRegulationStatusesResponseSourcesItemOneTypeMax = 24;
+
+export const checkRegulationStatusesResponseSourcesItemOneNumberMax = 12;
+
+export const checkRegulationStatusesResponseSourcesItemOneNumberRegExp =
+  new RegExp("^[0-9]+$");
+export const checkRegulationStatusesResponseSourcesItemOneYearRegExp =
+  new RegExp("^[0-9]{4}$");
+
+export const CheckRegulationStatusesResponse = zod.object({
+  sources: zod.array(
+    zod
+      .object({
+        type: zod
+          .string()
+          .min(1)
+          .max(checkRegulationStatusesResponseSourcesItemOneTypeMax),
+        number: zod
+          .string()
+          .min(1)
+          .max(checkRegulationStatusesResponseSourcesItemOneNumberMax)
+          .regex(checkRegulationStatusesResponseSourcesItemOneNumberRegExp),
+        year: zod
+          .string()
+          .regex(checkRegulationStatusesResponseSourcesItemOneYearRegExp)
+          .optional(),
+      })
+      .and(
+        zod.object({
+          sourceName: zod.string(),
+          sourceUrl: zod.string().url(),
+          checkedAt: zod.date().nullable(),
+          status: zod.enum(["active", "amended", "revoked", "unavailable"]),
+        }),
+      ),
+  ),
+});

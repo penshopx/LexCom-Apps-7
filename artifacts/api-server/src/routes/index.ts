@@ -8,6 +8,7 @@ import forumRouter from "./forum";
 import assistantRouter from "./assistant";
 import agenticRouter from "./agentic";
 import userProfileRouter from "./userProfile";
+import legalRouter from "./legal";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(forumRouter);
 router.use(assistantRouter);
 router.use(agenticRouter);
 router.use(userProfileRouter);
+router.use(legalRouter);
 
 export default router;

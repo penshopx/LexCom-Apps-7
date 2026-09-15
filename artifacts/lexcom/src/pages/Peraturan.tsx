@@ -3,8 +3,18 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, FileText, X, Filter, ExternalLink } from "lucide-react";
+import { Search, FileText, X, Filter, ExternalLink, Loader2 } from "lucide-react";
 import { dataPeraturan, type Peraturan as TPeraturan, type JenisPeraturan } from "@/data/peraturan";
+import {
+  formatCheckedAt,
+  isFreshProvenance,
+  provenanceMap,
+  provenanceStatusClass,
+  provenanceStatusLabel,
+  regulationReferenceKey,
+  useRegulationProvenance,
+} from "@/lib/regulation-provenance";
+import type { RegulationProvenance } from "@workspace/api-client-react";
 
 const SUMBER_JDIH = [
   {
@@ -49,10 +59,44 @@ const JENIS_COLORS: Record<string, string> = {
   Perda: "bg-orange-500/20 text-orange-400 border-orange-500/30",
 };
 
+function ProvenanceBadge({
+  provenance,
+  loading,
+}: {
+  provenance: RegulationProvenance;
+  loading: boolean;
+}) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${provenanceStatusClass(provenance)}`}
+    >
+      {loading && !isFreshProvenance(provenance) && (
+        <Loader2 className="h-2.5 w-2.5 animate-spin" />
+      )}
+      {provenanceStatusLabel(provenance)}
+    </span>
+  );
+}
+
 export default function Peraturan() {
   const [search, setSearch] = useState("");
   const [jenisFilter, setJenisFilter] = useState<JenisPeraturan | "Semua">("Semua");
   const [selected, setSelected] = useState<TPeraturan | null>(null);
+  const selectedReferences = useMemo(
+    () => (selected ? [selected.provenance] : []),
+    [selected],
+  );
+  const provenanceQuery = useRegulationProvenance(selectedReferences);
+  const checkedSources = useMemo(
+    () => provenanceMap(provenanceQuery.data?.sources),
+    [provenanceQuery.data?.sources],
+  );
+
+  const provenanceFor = (peraturan: TPeraturan): RegulationProvenance =>
+    checkedSources.get(regulationReferenceKey(peraturan.provenance)) ??
+    peraturan.provenance;
+
+  const selectedProvenance = selected ? provenanceFor(selected) : null;
 
   const filtered = useMemo(() => {
     return dataPeraturan.filter(p => {
@@ -164,6 +208,10 @@ export default function Peraturan() {
                           {p.jenis}
                         </span>
                         <span className="text-xs text-muted-foreground">{p.tahun}</span>
+                        <ProvenanceBadge
+                          provenance={provenanceFor(p)}
+                          loading={false}
+                        />
                       </div>
                       <p className="text-xs font-mono text-muted-foreground mb-1">{p.nomor}</p>
                       <h3 className="font-semibold text-sm md:text-base group-hover:text-primary transition-colors mb-2">
@@ -215,15 +263,33 @@ export default function Peraturan() {
                   <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{selected.isi}</p>
                 </div>
                 <div className="border-t border-border pt-4">
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Akses Teks Resmi</h3>
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Provenance Sumber Resmi</h3>
+                  {selectedProvenance && (
+                    <div className="mb-3 rounded-xl border border-white/10 bg-background/40 p-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <ProvenanceBadge
+                          provenance={selectedProvenance}
+                          loading={provenanceQuery.isFetching}
+                        />
+                        <span className="text-[10px] text-muted-foreground">
+                          Diperiksa: {formatCheckedAt(selectedProvenance.checkedAt)}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
+                        Status dibaca dari portal resmi pemerintah. Hasil gagal,
+                        tidak tersedia, atau lebih lama dari 24 jam tetap ditandai
+                        perlu verifikasi.
+                      </p>
+                    </div>
+                  )}
                   <div className="flex flex-wrap gap-2">
                     <a
-                      href={`https://peraturan.go.id/search?q=${encodeURIComponent(selected.nomor)}`}
+                      href={selectedProvenance?.sourceUrl ?? selected.provenance.sourceUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500/20 transition-colors"
                     >
-                      <ExternalLink className="w-3 h-3" /> Peraturan.go.id
+                      <ExternalLink className="w-3 h-3" /> Buka sumber Peraturan.go.id
                     </a>
                     <a
                       href="https://jdih.mahkamahagung.go.id/"

@@ -5,6 +5,52 @@
  * LexCom API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface RegulationReference {
+  /**
+   * @minLength 1
+   * @maxLength 24
+   */
+  type: string;
+  /**
+   * @minLength 1
+   * @maxLength 12
+   * @pattern ^[0-9]+$
+   */
+  number: string;
+  /** @pattern ^[0-9]{4}$ */
+  year?: string;
+}
+
+export type RegulationProvenanceStatus =
+  (typeof RegulationProvenanceStatus)[keyof typeof RegulationProvenanceStatus];
+
+export const RegulationProvenanceStatus = {
+  active: "active",
+  amended: "amended",
+  revoked: "revoked",
+  unavailable: "unavailable",
+} as const;
+
+export type RegulationProvenance = RegulationReference & {
+  sourceName: string;
+  sourceUrl: string;
+  /** @nullable */
+  checkedAt: string | null;
+  status: RegulationProvenanceStatus;
+};
+
+export interface RegulationStatusRequest {
+  /**
+   * @minItems 1
+   * @maxItems 50
+   */
+  references: RegulationReference[];
+}
+
+export interface RegulationStatusResponse {
+  sources: RegulationProvenance[];
+}
+
 export interface HealthStatus {
   status: string;
 }

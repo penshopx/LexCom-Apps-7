@@ -1,14 +1,28 @@
+import { useMemo } from "react";
 import { AlertTriangle, BookOpenCheck, ExternalLink } from "lucide-react";
-import { dataPeraturan } from "@/data/peraturan";
+import {
+  dataPeraturan,
+  initialPeraturanProvenance,
+} from "@/data/peraturan";
+import {
+  formatCheckedAt,
+  isFreshProvenance,
+  provenanceMap,
+  provenanceStatusClass,
+  provenanceStatusLabel,
+  regulationReferenceKey,
+  useRegulationProvenance,
+} from "@/lib/regulation-provenance";
+import type {
+  RegulationProvenance,
+  RegulationReference,
+} from "@workspace/api-client-react";
 
-type LegalReference = {
+type LegalReference = RegulationReference & {
   label: string;
-  number: string;
-  year?: string;
   article?: string;
   inCatalog: boolean;
-  sourceName: string;
-  sourceUrl: string;
+  fallbackProvenance: RegulationProvenance;
 };
 
 const REFERENCE_PATTERN = /\b(UUD|UU|PP|PERPRES|PERMA|SEMA|PERMEN[A-Z]*)\s*(?:RI\s*)?(?:(?:NO(?:MOR)?\.?)\s*)?(\d+)(?:\s*(?:\/|TAHUN)\s*(\d{4}))?/gi;
@@ -39,13 +53,15 @@ function extractReferences(content: string): LegalReference[] {
     });
 
     unique.set(key, {
+      type,
       label: match[0].replace(/\s+/g, " ").trim(),
       number,
       year,
       article,
       inCatalog: Boolean(catalogItem),
-      sourceName: "Peraturan.go.id",
-      sourceUrl: `https://peraturan.go.id/search?q=${encodeURIComponent(match[0].replace(/\s+/g, " ").trim())}`,
+      fallbackProvenance:
+        catalogItem?.provenance ??
+        initialPeraturanProvenance({ type, number, year }),
     });
   }
 
@@ -59,8 +75,17 @@ export function LegalAnswerTrust({
   content: string;
   compact?: boolean;
 }) {
-  const references = extractReferences(content);
-  const catalogCount = references.filter((reference) => reference.inCatalog).length;
+  const references = useMemo(() => extractReferences(content), [content]);
+  const provenanceQuery = useRegulationProvenance(references);
+  const checkedSources = useMemo(
+    () => provenanceMap(provenanceQuery.data?.sources),
+    [provenanceQuery.data?.sources],
+  );
+  const verifiedCount = references.filter((reference) =>
+    isFreshProvenance(
+      checkedSources.get(regulationReferenceKey(reference)),
+    ),
+  ).length;
   const requiredSections = [
     "Kesimpulan",
     "Dasar Hukum",
@@ -73,12 +98,12 @@ export function LegalAnswerTrust({
     new RegExp(`#{1,4}\\s*${section}`, "i").test(content)
   );
 
-  const status = catalogCount > 0
+  const status = verifiedCount > 0
     ? {
         icon: BookOpenCheck,
-        title: `${catalogCount} rujukan ditemukan di katalog LexCom`,
-        detail: "Kecocokan katalog membantu penelusuran, tetapi status dan isi tetap perlu diperiksa pada sumber resmi.",
-        color: "border-blue-500/25 bg-blue-500/8 text-blue-300",
+        title: `${verifiedCount} status didukung sumber resmi`,
+        detail: "Status berasal dari pemeriksaan portal pemerintah, bukan dari teks AI.",
+        color: "border-green-500/25 bg-green-500/8 text-green-300",
       }
     : references.length > 0
       ? {
@@ -111,14 +136,18 @@ export function LegalAnswerTrust({
 
           {references.length > 0 && (
             <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
-              {references.map((reference) => (
+              {references.map((reference) => {
+                const checked =
+                  checkedSources.get(regulationReferenceKey(reference)) ??
+                  reference.fallbackProvenance;
+                return (
                 <a
-                  key={`${reference.label}-${reference.year ?? ""}`}
-                  href={reference.sourceUrl}
+                  key={regulationReferenceKey(reference)}
+                  href={checked.sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="rounded-lg border border-white/10 bg-background/40 px-2.5 py-2 text-[10px] text-foreground/80 transition-colors hover:border-primary/40"
-                  title="Buka pencarian pada portal resmi untuk memeriksa sumber"
+                  title="Buka sumber resmi peraturan"
                 >
                   <span className="flex items-center gap-1 font-semibold text-foreground">
                     <BookOpenCheck className="w-3 h-3" />
@@ -128,14 +157,23 @@ export function LegalAnswerTrust({
                   {reference.article && (
                     <span className="mt-0.5 block text-foreground/70">{reference.article}</span>
                   )}
-                  <span className="mt-1 block text-muted-foreground">Sumber: {reference.sourceName}</span>
-                  <span className={reference.inCatalog ? "text-blue-300" : "text-amber-300"}>
-                    {reference.inCatalog
-                      ? "Ditemukan di katalog · verifikasi status resmi"
-                      : "Belum dikenali katalog · perlu verifikasi"}
+                  <span className="mt-1 block text-muted-foreground">Sumber: {checked.sourceName}</span>
+                  <span className="mt-0.5 block text-muted-foreground">
+                    Diperiksa: {formatCheckedAt(checked.checkedAt)}
                   </span>
+                  <span className={`mt-1 inline-flex rounded-full border px-1.5 py-0.5 font-semibold ${provenanceStatusClass(checked)}`}>
+                    {provenanceStatusLabel(checked)}
+                  </span>
+                  {!isFreshProvenance(checked) && (
+                    <span className="ml-1 text-amber-300">
+                      {provenanceQuery.isPending
+                        ? "Memeriksa sumber resmi..."
+                        : "Pemeriksaan gagal atau sudah kedaluwarsa"}
+                    </span>
+                  )}
                 </a>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

@@ -9,6 +9,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: legal
+    description: Official legal-source verification
   - name: Auth
     description: Browser and mobile authentication endpoints.
   - name: openai
@@ -557,6 +559,37 @@ paths:
             text/event-stream: {}
         "401":
           description: Authentication required
+  /legal/regulations/status:
+    post:
+      operationId: checkRegulationStatuses
+      tags: [legal]
+      summary: Check regulation status against an official source
+      description: Checks each requested citation against the official peraturan.go.id portal. Status is never inferred from AI output.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegulationStatusRequest"
+      responses:
+        "200":
+          description: Official source provenance for each requested citation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegulationStatusResponse"
+        "400":
+          description: Invalid or oversized request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          description: Too many official-source checks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
 components:
   parameters:
     AuthorizationSessionHeader:
@@ -581,6 +614,57 @@ components:
       schema:
         type: string
   schemas:
+    RegulationReference:
+      type: object
+      required: [type, number]
+      properties:
+        type:
+          type: string
+          minLength: 1
+          maxLength: 24
+        number:
+          type: string
+          pattern: '^[0-9]+$'
+          minLength: 1
+          maxLength: 12
+        year:
+          type: string
+          pattern: '^[0-9]{4}$'
+    RegulationProvenance:
+      allOf:
+        - $ref: "#/components/schemas/RegulationReference"
+        - type: object
+          required: [sourceName, sourceUrl, checkedAt, status]
+          properties:
+            sourceName:
+              type: string
+            sourceUrl:
+              type: string
+              format: uri
+            checkedAt:
+              type: [string, 'null']
+              format: date-time
+            status:
+              type: string
+              enum: [active, amended, revoked, unavailable]
+    RegulationStatusRequest:
+      type: object
+      required: [references]
+      properties:
+        references:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/RegulationReference"
+    RegulationStatusResponse:
+      type: object
+      required: [sources]
+      properties:
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/RegulationProvenance"
     HealthStatus:
       type: object
       properties:
