@@ -1,4 +1,9 @@
-import { dataPutusan, type Putusan } from "./putusan";
+import {
+  dataPutusan,
+  putusanNetworkMetadata,
+  type Putusan,
+  type PutusanNetworkMetadata,
+} from "./putusan";
 
 export interface GraphNode {
   id: string;
@@ -8,8 +13,7 @@ export interface GraphNode {
   type: "match" | "related";
   topics: string[];
   relevanceScore: number;
-  sourceUrl: string;
-  sourceStatus: "needs-verification";
+  metadata: PutusanNetworkMetadata;
 }
 
 export interface GraphEdge {
@@ -25,17 +29,9 @@ const STOPWORDS = new Set([
   "sepihak", "tanpa", "indonesia",
 ]);
 
-const NETWORK_DECISIONS = dataPutusan.filter(
-  (putusan) => putusan.jenis === "MA" || putusan.jenis === "MK",
+const NETWORK_DECISIONS = dataPutusan.filter((putusan) =>
+  Boolean(putusanNetworkMetadata[putusan.id]),
 );
-
-function buildOfficialSourceUrl(putusan: Putusan): string {
-  if (putusan.jenis === "MK") {
-    return "https://www.mkri.id/perkara/persidangan/putusan";
-  }
-
-  return `https://putusan3.mahkamahagung.go.id/pencarian/?q=${encodeURIComponent(putusan.nomor)}`;
-}
 
 function getTopicsFromText(value: string): string[] {
   const text = value.toLowerCase();
@@ -57,7 +53,7 @@ function getTopicsFromText(value: string): string[] {
 }
 
 function getTopics(putusan: Putusan): string[] {
-  return getTopicsFromText(`${putusan.pokok_perkara} ${putusan.amar}`);
+  return putusanNetworkMetadata[putusan.id]?.legalIssues ?? [];
 }
 
 function buildNode(
@@ -73,8 +69,7 @@ function buildNode(
     type,
     topics: getTopics(putusan),
     relevanceScore,
-    sourceUrl: buildOfficialSourceUrl(putusan),
-    sourceStatus: "needs-verification",
+    metadata: putusanNetworkMetadata[putusan.id],
   };
 }
 
@@ -90,7 +85,8 @@ export function buildPrecedentGraph(query: string): { nodes: GraphNode[]; edges:
   const nodesMap = new Map<string, GraphNode>();
 
   NETWORK_DECISIONS.forEach((putusan) => {
-    const text = `${putusan.pokok_perkara} ${putusan.amar} ${putusan.nomor}`.toLowerCase();
+    const metadata = putusanNetworkMetadata[putusan.id];
+    const text = `${putusan.pokok_perkara} ${putusan.amar} ${putusan.nomor} ${metadata.legalIssues.join(" ")}`.toLowerCase();
     const keywordScore = keywords.reduce(
       (score, keyword) => score + (text.includes(keyword) ? 1 : 0),
       0,

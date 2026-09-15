@@ -67,7 +67,7 @@ interface PrecedentResult {
   error?: boolean;
 }
 
-const JENIS_COLORS: Record<"MK" | "MA", string> = {
+const JENIS_COLORS: Record<string, string> = {
   MK: "#ef4444",
   MA: "#3b82f6",
 };
@@ -80,14 +80,6 @@ function formatNodeLabel(p: Putusan) {
     return p.nomor.replace("Putusan MA No. ", "MA ").replace("Putusan MA (PK) No. ", "MA PK ");
   }
   return p.nomor.replace("Putusan ", "");
-}
-
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 export default function PetaPreseden() {
@@ -115,7 +107,7 @@ export default function PetaPreseden() {
 
   const streamResult = useCallback(async (agent: typeof PRECEDENT_AGENTS[0], topic: string, contextNodes: GraphNode[], convId: number, idx: number) => {
     const matchInfo = contextNodes.length > 0
-      ? `\nKandidat putusan dari katalog lokal yang terkait topik ini:\n${contextNodes.map(n => `- ${n.putusan.nomor} (${n.putusan.jenis}): ${n.putusan.pokok_perkara}`).join('\n')}`
+      ? `\nKandidat putusan dari katalog lokal yang terkait topik ini (seluruh isi masih perlu verifikasi manual pada sumber resmi):\n${contextNodes.map(n => `- ${n.putusan.nomor} (${n.metadata.court}, ${n.metadata.year}); isu katalog: ${n.metadata.legalIssues.join(", ")}; status: BELUM DIVERIFIKASI; sumber pemeriksaan: ${n.metadata.officialSourceUrl}`).join('\n')}\nJangan nyatakan nomor, ringkasan, amar, relasi, atau status hukum kandidat sebagai fakta terverifikasi. Jika menyebut kandidat, selalu beri label \"perlu verifikasi\" dan arahkan pengguna ke sumber resmi.`
       : "\n[Tidak ada kandidat putusan spesifik dari katalog lokal untuk topik ini, berikan analisis umum saja]";
 
     const prompt = `${agent.prompt}${topic}\n${matchInfo}`;
@@ -352,13 +344,18 @@ export default function PetaPreseden() {
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full`} style={{ backgroundColor: JENIS_COLORS[selectedNode.putusan.jenis] + "20", color: JENIS_COLORS[selectedNode.putusan.jenis], borderColor: JENIS_COLORS[selectedNode.putusan.jenis] + "50", borderWidth: "1px" }}>
                             {selectedNode.putusan.jenis}
                           </span>
-                          <span className="text-[10px] text-muted-foreground">{formatDate(selectedNode.putusan.tanggal)}</span>
+                          <span className="text-[10px] text-muted-foreground">{selectedNode.metadata.court} · {selectedNode.metadata.year}</span>
                         </div>
                         <button onClick={() => setSelectedNode(null)} className="text-muted-foreground hover:text-foreground">
                           <X className="w-4 h-4" />
                         </button>
                       </div>
                       <p className="text-xs font-mono text-muted-foreground mb-2">{selectedNode.putusan.nomor}</p>
+                      <div className="mb-2 flex flex-wrap gap-1">
+                        {selectedNode.metadata.legalIssues.map((issue) => (
+                          <span key={issue} className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] text-muted-foreground">{issue}</span>
+                        ))}
+                      </div>
                       <p className="text-sm font-semibold mb-1 line-clamp-2" title={selectedNode.putusan.pokok_perkara}>{selectedNode.putusan.pokok_perkara}</p>
                       <p className="text-xs text-muted-foreground line-clamp-3 mb-3">{selectedNode.putusan.amar}</p>
 
@@ -390,12 +387,12 @@ export default function PetaPreseden() {
                           <p>Kandidat dari katalog lokal. <strong>Perlu verifikasi sumber resmi</strong> untuk memastikan nomor, amar, dan perkembangan setelah putusan.</p>
                         </div>
                         <a
-                          href={selectedNode.sourceUrl}
+                          href={selectedNode.metadata.officialSourceUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium transition-colors"
                         >
-                          <ExternalLink className="w-3 h-3" /> Buka di Direktori Resmi
+                          <ExternalLink className="w-3 h-3" /> Buka {selectedNode.metadata.officialSourceName}
                         </a>
                       </div>
                     </div>
@@ -413,15 +410,43 @@ export default function PetaPreseden() {
                         ))}
                       </div>
                       <p className="text-[10px] leading-relaxed text-muted-foreground">
-                        Garis hanya menunjukkan isu hukum yang sama. Pilih node untuk melihat detail dan memeriksa sumber resmi.
+                        Garis menjelaskan isu hukum bersama dari metadata katalog, bukan kutipan atau overruling. Semua node perlu diperiksa manual pada sumber resmi.
                       </p>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Agent Results */}
+              {/* Synchronized case list + Agent Results */}
               <div className="lg:col-span-3 space-y-3">
+                <div className="glass-card rounded-2xl border border-white/10 p-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-bold">Perkara dalam jaringan</h3>
+                      <p className="text-[10px] text-muted-foreground">Daftar ini memakai node yang sama dengan peta, diurutkan menurut relevansi.</p>
+                    </div>
+                    <span className="text-xs text-muted-foreground">{graphData.nodes.length} kandidat</span>
+                  </div>
+                  {graphData.nodes.length > 0 ? (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {graphData.nodes.map((node) => (
+                        <button key={node.id} type="button" onClick={() => setSelectedNode(node)} className={`rounded-xl border p-3 text-left transition-colors ${selectedNode?.id === node.id ? "border-primary/50 bg-primary/10" : "border-white/10 bg-white/5 hover:bg-white/10"}`}>
+                          <div className="mb-1 flex items-center gap-2">
+                            <span className="text-[9px] font-bold text-primary">{node.putusan.jenis}</span>
+                            <span className="text-[9px] text-muted-foreground">{node.metadata.year}</span>
+                            <span className="ml-auto text-[9px] text-amber-300">Perlu verifikasi</span>
+                          </div>
+                          <p className="truncate text-[10px] font-mono">{node.putusan.nomor}</p>
+                          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{node.putusan.pokok_perkara}</p>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-white/10 p-5 text-center text-xs text-muted-foreground">
+                      Belum ada perkara MA/MK dengan tautan pemeriksaan resmi yang cocok. Isi katalog belum diverifikasi; coba istilah isu yang lebih spesifik.
+                    </div>
+                  )}
+                </div>
                 {results.map((agent, i) => (
                   <motion.div
                     key={agent.key}

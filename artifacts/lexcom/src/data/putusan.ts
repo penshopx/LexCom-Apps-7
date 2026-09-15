@@ -10,6 +10,18 @@ export interface Putusan {
   amar: string;
 }
 
+export type PutusanSourceStatus = "needs-verification";
+
+export interface PutusanNetworkMetadata {
+  stableIdentifier: string;
+  court: "Mahkamah Agung" | "Mahkamah Konstitusi";
+  year: number;
+  legalIssues: string[];
+  officialSourceUrl: string;
+  officialSourceName: string;
+  sourceStatus: PutusanSourceStatus;
+}
+
 export const dataPutusan: Putusan[] = [
   {
     id: "mk-91-2020",
@@ -255,3 +267,28 @@ export const dataPutusan: Putusan[] = [
     amar: "Mengabulkan permohonan sebagian. Eksekusi fidusia secara sepihak hanya sah jika debitur mengakui wanprestasi dan menyerahkan objek secara sukarela. Jika debitur menolak/keberatan, kreditur wajib mengajukan eksekusi melalui pengadilan.",
   },
 ];
+
+const maSearchUrl = (nomor: string) =>
+  `https://putusan3.mahkamahagung.go.id/pencarian/?q=${encodeURIComponent(nomor)}`;
+const mkDirectoryUrl = "https://www.mkri.id/perkara/persidangan/putusan";
+
+/**
+ * Metadata ini menentukan putusan yang boleh masuk ke peta. Status
+ * `needs-verification` berarti tautan resmi tersedia untuk pemeriksaan manual,
+ * bukan bahwa isi katalog sudah divalidasi otomatis.
+ */
+export const putusanNetworkMetadata: Record<string, PutusanNetworkMetadata> = {
+  "mk-91-2020": { stableIdentifier: "mk-91-puu-xviii-2020", court: "Mahkamah Konstitusi", year: 2021, legalIssues: ["Pengujian UU", "Pembentukan undang-undang", "Cipta Kerja"], officialSourceUrl: mkDirectoryUrl, officialSourceName: "Direktori Putusan MK", sourceStatus: "needs-verification" },
+  "mk-22-2017": { stableIdentifier: "mk-22-puu-xv-2017", court: "Mahkamah Konstitusi", year: 2018, legalIssues: ["Pengujian UU", "Hukum Keluarga", "Batas usia perkawinan"], officialSourceUrl: mkDirectoryUrl, officialSourceName: "Direktori Putusan MK", sourceStatus: "needs-verification" },
+  "mk-46-2010": { stableIdentifier: "mk-46-puu-viii-2010", court: "Mahkamah Konstitusi", year: 2012, legalIssues: ["Pengujian UU", "Hukum Keluarga", "Status anak"], officialSourceUrl: mkDirectoryUrl, officialSourceName: "Direktori Putusan MK", sourceStatus: "needs-verification" },
+  "mk-105-2021": { stableIdentifier: "mk-105-puu-xix-2021", court: "Mahkamah Konstitusi", year: 2022, legalIssues: ["Pengujian UU", "Jabatan notaris"], officialSourceUrl: mkDirectoryUrl, officialSourceName: "Direktori Putusan MK", sourceStatus: "needs-verification" },
+  "mk-79-2022": { stableIdentifier: "mk-79-puu-xx-2022", court: "Mahkamah Konstitusi", year: 2023, legalIssues: ["Pengujian UU", "Ketenagakerjaan", "PHK"], officialSourceUrl: mkDirectoryUrl, officialSourceName: "Direktori Putusan MK", sourceStatus: "needs-verification" },
+  "mk-34-2013": { stableIdentifier: "mk-34-puu-xi-2013", court: "Mahkamah Konstitusi", year: 2014, legalIssues: ["Pengujian UU", "Peninjauan kembali", "Hukum acara pidana"], officialSourceUrl: mkDirectoryUrl, officialSourceName: "Direktori Putusan MK", sourceStatus: "needs-verification" },
+  "mk-012-016-019-2003": { stableIdentifier: "mk-012-016-019-puu-iv-2006", court: "Mahkamah Konstitusi", year: 2007, legalIssues: ["Pengujian UU", "Pemberantasan korupsi", "Kewenangan KPK"], officialSourceUrl: mkDirectoryUrl, officialSourceName: "Direktori Putusan MK", sourceStatus: "needs-verification" },
+  "mk-55-2019": { stableIdentifier: "mk-55-puu-xvii-2019", court: "Mahkamah Konstitusi", year: 2020, legalIssues: ["Pengujian UU", "Pemilu", "Ambang batas pencalonan"], officialSourceUrl: mkDirectoryUrl, officialSourceName: "Direktori Putusan MK", sourceStatus: "needs-verification" },
+  "mk-90-2023": { stableIdentifier: "mk-90-puu-xxi-2023", court: "Mahkamah Konstitusi", year: 2023, legalIssues: ["Pengujian UU", "Pemilu", "Syarat usia calon"], officialSourceUrl: mkDirectoryUrl, officialSourceName: "Direktori Putusan MK", sourceStatus: "needs-verification" },
+  "mk-18-2019": { stableIdentifier: "mk-18-puu-xvii-2019", court: "Mahkamah Konstitusi", year: 2019, legalIssues: ["Pengujian UU", "Jaminan Fidusia", "Eksekusi fidusia"], officialSourceUrl: mkDirectoryUrl, officialSourceName: "Direktori Putusan MK", sourceStatus: "needs-verification" },
+  "ma-kasasi-fidusia-2021": { stableIdentifier: "ma-3357-k-pdt-2021", court: "Mahkamah Agung", year: 2021, legalIssues: ["Jaminan Fidusia", "Eksekusi fidusia", "Perbuatan melawan hukum"], officialSourceUrl: maSearchUrl("Putusan MA No. 3357 K/Pdt/2021"), officialSourceName: "Direktori Putusan MA", sourceStatus: "needs-verification" },
+  "ma-pk-228-2022": { stableIdentifier: "ma-228-pk-pid-sus-2022", court: "Mahkamah Agung", year: 2022, legalIssues: ["Korupsi", "Peninjauan kembali", "Pengadaan"], officialSourceUrl: maSearchUrl("Putusan MA (PK) No. 228 PK/Pid.Sus/2022"), officialSourceName: "Direktori Putusan MA", sourceStatus: "needs-verification" },
+  "ma-1576k-tipikor-2022": { stableIdentifier: "ma-1576-k-pid-sus-2022", court: "Mahkamah Agung", year: 2022, legalIssues: ["Korupsi", "Pengadaan", "Kerugian negara"], officialSourceUrl: maSearchUrl("Putusan MA No. 1576 K/Pid.Sus/2022"), officialSourceName: "Direktori Putusan MA", sourceStatus: "needs-verification" },
+};

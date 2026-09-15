@@ -4,7 +4,12 @@ import { Footer } from "@/components/layout/Footer";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Scale, X, Filter, ExternalLink } from "lucide-react";
-import { dataPutusan, type Putusan as TPutusan, type JenisPengadilan } from "@/data/putusan";
+import {
+  dataPutusan,
+  putusanNetworkMetadata,
+  type Putusan as TPutusan,
+  type JenisPengadilan,
+} from "@/data/putusan";
 
 const SUMBER_RESMI = [
   {
@@ -233,6 +238,11 @@ export default function Putusan() {
                           {p.jenis}
                         </span>
                         <span className="text-xs text-muted-foreground">{formatTanggal(p.tanggal)}</span>
+                        {putusanNetworkMetadata[p.id] && (
+                          <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-300">
+                            Sumber perlu diverifikasi
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs font-mono text-muted-foreground mb-1">{p.nomor}</p>
                       <p className="text-xs text-muted-foreground/70 mb-1 truncate">Majelis: {p.majelis.split(";")[0].trim()}</p>
@@ -292,11 +302,16 @@ export default function Putusan() {
                 </div>
                 <div className="border-t border-border pt-4">
                   <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Cari Putusan Lengkap di Sumber Resmi</h3>
+                  {putusanNetworkMetadata[selected.id] && (
+                    <p className="mb-3 rounded-lg border border-amber-500/20 bg-amber-500/10 p-2.5 text-xs text-amber-200">
+                      Tautan berikut disediakan untuk pemeriksaan manual. LexCom belum memvalidasi otomatis nomor, ringkasan, amar, atau perkembangan putusan ini.
+                    </p>
+                  )}
                   <div className="flex flex-wrap gap-2">
                     {selected.jenis === "MK" && (
                       <>
                         <a
-                          href={`https://www.mkri.id/perkara/persidangan/putusan`}
+                           href={putusanNetworkMetadata[selected.id]?.officialSourceUrl ?? `https://www.mkri.id/perkara/persidangan/putusan`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition-colors"
@@ -316,7 +331,7 @@ export default function Putusan() {
                     {(selected.jenis === "MA" || selected.jenis === "PN" || selected.jenis === "PA") && (
                       <>
                         <a
-                          href={`https://putusan3.mahkamahagung.go.id/pencarian/?q=${encodeURIComponent(selected.nomor)}`}
+                           href={putusanNetworkMetadata[selected.id]?.officialSourceUrl ?? buildSearchUrl(selected)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 transition-colors"
